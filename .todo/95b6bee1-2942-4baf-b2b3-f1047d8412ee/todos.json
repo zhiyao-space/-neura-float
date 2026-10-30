@@ -1,32 +1,12 @@
 [
   {
-    "id": "1",
-    "status": "completed",
-    "content": "复制客户端代码到 Vite 工程"
-  },
-  {
-    "id": "2",
-    "status": "completed",
-    "content": "补充依赖并安装"
-  },
-  {
-    "id": "3",
-    "status": "completed",
-    "content": "替换 Next 专属代码"
-  },
-  {
-    "id": "4",
-    "status": "completed",
-    "content": "建立路由页面与样式入口"
-  },
-  {
     "id": "5",
-    "status": "in_progress",
-    "content": "pnpm run build 修复编译错误"
+    "status": "completed",
+    "content": "pnpm run build 全量编译通过"
   },
   {
     "id": "6",
-    "status": "pending",
-    "content": "pnpm run dev 启动预览验证"
+    "status": "completed",
+    "content": "pnpm run dev 预览验收首屏"
   }
 ]

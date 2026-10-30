@@ -15,7 +15,7 @@
 .cp-shopping-black-market-gate::before,
 .cp-shopping-black-market-gate::after,
 .cp-shopping-black-market-gate-noise {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -63,7 +63,7 @@
 
 .cp-shopping-black-market-gate-panel span,
 .cp-shopping-black-market-gate-panel em {
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -75,7 +75,7 @@
 .cp-shopping-black-market-gate-panel strong {
   position: relative;
   color: #d7e4df;
-  font: 800 calc(28px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(28px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
@@ -291,7 +291,7 @@
 .cp-black-market-terminal p {
   margin: 10px 0 0;
   color: #a8b7b0;
-  font: calc(13px*var(--app-text-scale,1))/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(13px*var(--app-text-scale,1))/1.65 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .cp-black-market-terminal-grid {
@@ -420,7 +420,7 @@
 .cp-black-market-card p {
   margin: 9px 0 0;
   color: #a8b7b0;
-  font: calc(13px*var(--app-text-scale,1))/1.62 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(13px*var(--app-text-scale,1))/1.62 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .cp-black-market-tags {
@@ -522,7 +522,7 @@
 .cp-black-market-owned-card p {
   margin: 0;
   color: #a8b7b0;
-  font: calc(12px*var(--app-text-scale,1))/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(12px*var(--app-text-scale,1))/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .cp-black-market-owned-meta {
@@ -633,7 +633,7 @@
   background: rgba(82, 255, 158, 0.06);
   color: #8dffbd;
   padding: 0 10px;
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.08em;
 }
 
@@ -793,7 +793,7 @@
 .cp-black-market-modal-copy {
   margin: 12px 0;
   color: #a8b7b0;
-  font: calc(13px*var(--app-text-scale,1))/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(13px*var(--app-text-scale,1))/1.65 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .cp-black-market-info-flat {
@@ -832,7 +832,7 @@
 }
 
 .cp-black-market-file-card::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 4px);
@@ -854,7 +854,7 @@
 .cp-black-market-file-card h2 {
   margin: 8px 0 2px;
   color: #52ff9e;
-  font: 500 calc(24px*var(--app-text-scale,1))/1 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 500 calc(24px*var(--app-text-scale,1))/1 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -870,7 +870,7 @@
 .cp-black-market-file-intro {
   margin: 0;
   color: #d9e1dc;
-  font: calc(13px*var(--app-text-scale,1))/1.72 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(13px*var(--app-text-scale,1))/1.72 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   white-space: pre-wrap;
 }
 
@@ -930,7 +930,7 @@
   border-radius: 0;
   background: rgba(0, 255, 102, 0.045);
   color: rgba(150, 255, 195, 0.84);
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.12em;
 }
 
@@ -972,7 +972,7 @@
 
 .cp-black-market-confirm-code {
   color: #ff4767;
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.18em;
   margin-bottom: 9px;
 }
@@ -980,7 +980,7 @@
 .cp-black-market-confirm-body p {
   margin: 0;
   color: var(--bm-text);
-  font: calc(12px*var(--app-text-scale,1))/1.7 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(12px*var(--app-text-scale,1))/1.7 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .cp-black-market-confirm-body span {
@@ -1010,14 +1010,14 @@
   --bm-dim: #4a5560;
   background: var(--bm-bg);
   color: var(--bm-text);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: calc(12px*var(--app-text-scale,1));
   letter-spacing: 0.02em;
   -webkit-font-smoothing: antialiased;
 }
 
 .cp-black-market-root::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 70px 0 0;
   z-index: 0;
@@ -1032,7 +1032,7 @@
 
 .cp-black-market-noise {
   opacity: 0.052;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E');
   background-size: 180px 180px;
 }
 
@@ -1086,7 +1086,7 @@
 .cp-black-market-header span {
   display: block;
   color: var(--bm-green);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: calc(8px*var(--app-text-scale,1));
   letter-spacing: 0.18em;
   line-height: 1;
@@ -1095,7 +1095,7 @@
 
 .cp-black-market-header strong {
   color: var(--bm-text);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: calc(13px*var(--app-text-scale,1));
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -1186,7 +1186,7 @@
   display: inline-block;
   margin: 0;
   color: #d8e4ec;
-  font-family: "Major Mono Display", "JetBrains Mono", ui-monospace, monospace;
+  font-family: 'Major Mono Display', 'JetBrains Mono', ui-monospace, monospace;
   font-size: clamp(34px, 8.8vw, 42px);
   font-weight: 400;
   line-height: 1;
@@ -1323,12 +1323,12 @@
     linear-gradient(180deg, rgba(1, 3, 5, 0.26), rgba(0, 0, 0, 0.76)),
     radial-gradient(circle at 56% 38%, rgba(216, 228, 236, 0.14), transparent 18%),
     linear-gradient(135deg, rgba(0, 255, 102, 0.11), rgba(0, 225, 255, 0.045) 50%, rgba(255, 51, 85, 0.09)),
-    url("/images/black-market/operator.jpg") center / cover no-repeat,
+    url('/images/black-market/operator.jpg') center / cover no-repeat,
     #020304;
 }
 
 .cp-black-market-camera::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -1338,7 +1338,7 @@
 }
 
 .cp-black-market-camera::after {
-  content: "";
+  content: '';
   position: absolute;
   z-index: 2;
   left: -12%;
@@ -1398,7 +1398,7 @@
 .cp-black-market-operator-status {
   margin: 8px 0 9px;
   color: var(--bm-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: calc(19px*var(--app-text-scale,1));
   line-height: 1.18;
   letter-spacing: 0;
@@ -1525,7 +1525,7 @@
   background: rgba(0, 255, 102, 0.06);
   color: var(--bm-green);
   padding: 0 12px;
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.08em;
 }
 
@@ -1611,7 +1611,7 @@
 }
 
 .cp-black-market-card::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   bottom: 0;
@@ -1736,7 +1736,7 @@
 .cp-black-market-card p {
   margin: 0;
   color: var(--bm-muted);
-  font: calc(11px*var(--app-text-scale,1))/1.55 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: calc(11px*var(--app-text-scale,1))/1.55 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.02em;
 }
 
@@ -1753,12 +1753,12 @@
 }
 
 .cp-black-market-tags span::before {
-  content: "[";
+  content: '[';
   color: var(--bm-dim);
 }
 
 .cp-black-market-tags span::after {
-  content: "]";
+  content: ']';
   color: var(--bm-dim);
 }
 
@@ -1842,7 +1842,7 @@
 
 .cp-black-market-owned-card p {
   color: var(--bm-muted);
-  font: calc(11px*var(--app-text-scale,1))/1.5 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: calc(11px*var(--app-text-scale,1))/1.5 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .cp-black-market-owned-meta {
@@ -1905,7 +1905,7 @@
 
 .cp-black-market-modal-copy {
   color: var(--bm-muted);
-  font: calc(11px*var(--app-text-scale,1))/1.65 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: calc(11px*var(--app-text-scale,1))/1.65 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.02em;
 }
 
@@ -1923,7 +1923,7 @@
   background: transparent;
   color: var(--bm-text);
   border-radius: 0;
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.1em;
 }
 
@@ -1990,7 +1990,7 @@
   display: -webkit-box;
   margin: 7px 0 0;
   color: var(--bm-muted);
-  font: calc(11px*var(--app-text-scale,1))/1.5 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: calc(11px*var(--app-text-scale,1))/1.5 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -2045,14 +2045,14 @@
   background: rgba(218, 58, 82, 0.055);
   color: #da3a52;
   border-radius: 0;
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.12em;
 }
 
 .cp-black-market-studio-hint {
   margin: -2px 0 2px;
   color: var(--bm-dim);
-  font: calc(10px*var(--app-text-scale,1))/1.55 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: calc(10px*var(--app-text-scale,1))/1.55 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.04em;
 }
 
@@ -2083,13 +2083,13 @@
 
 .cp-black-market-studio-check strong {
   color: #f45f76;
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.14em;
 }
 
 .cp-black-market-studio-check em {
   color: var(--bm-muted);
-  font: calc(10px*var(--app-text-scale,1))/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(10px*var(--app-text-scale,1))/1.55 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0;
   font-style: normal;
 }
@@ -2101,7 +2101,7 @@
 }
 
 /* 草稿卡片发布状态标签：关联共享档案后亮绿 */
-.cp-black-market-published-card span[data-pub="yes"] {
+.cp-black-market-published-card span[data-pub='yes'] {
   color: #79d99a;
 }
 
@@ -2109,7 +2109,7 @@
 .cp-bm-dirty-hint {
   margin-left: 8px;
   color: #79d99a;
-  font: 800 calc(9px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(9px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-style: normal;
@@ -2121,7 +2121,7 @@
   background: rgba(255, 255, 255, 0.02);
   color: var(--bm-muted);
   border-radius: 0;
-  font: 800 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.14em;
 }
 
@@ -2149,7 +2149,7 @@
 
 .cp-black-market-studio-test-head span {
   color: var(--bm-dim);
-  font: 800 calc(9px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(9px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.14em;
 }
 
@@ -2190,7 +2190,7 @@
 .cp-black-market-published-card span,
 .cp-black-market-editing-banner span {
   color: var(--bm-dim);
-  font: 800 calc(9px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(9px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -2206,7 +2206,7 @@
 .cp-black-market-published-card p {
   margin: 5px 0 0;
   color: var(--bm-muted);
-  font: calc(11px*var(--app-text-scale,1))/1.55 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: calc(11px*var(--app-text-scale,1))/1.55 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.02em;
 }
 
@@ -2214,7 +2214,7 @@
   display: block;
   margin-top: 8px;
   color: var(--bm-dim);
-  font: calc(9px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: calc(9px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.1em;
 }
 
@@ -2251,7 +2251,7 @@
   background: transparent;
   color: var(--bm-text);
   border-radius: 0;
-  font: 800 calc(9px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(9px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.09em;
 }
 
@@ -2332,7 +2332,7 @@
 }
 
 .cp-black-market-scene-modal .cp-black-market-scene-session-card::before {
-  content: "";
+  content: '';
   position: absolute;
   z-index: 10;
   top: 0;
@@ -2347,7 +2347,7 @@
 }
 
 .cp-black-market-scene-modal .cp-black-market-scene-session-card::after {
-  content: "";
+  content: '';
   position: absolute;
   z-index: 10;
   right: 0;
@@ -2429,8 +2429,8 @@
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr);
   grid-template-areas:
-    "avatar name"
-    "avatar user";
+    'avatar name'
+    'avatar user';
   align-items: center;
   column-gap: 10px;
   row-gap: 4px;
@@ -2631,7 +2631,7 @@
 .cp-black-market-scene-message-body {
   margin: 0;
   color: var(--bm-text);
-  font: calc(12px*var(--app-text-scale,1))/1.68 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(12px*var(--app-text-scale,1))/1.68 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -2650,7 +2650,7 @@
   align-items: center;
   gap: 4px;
   color: rgba(228, 239, 232, 0.78);
-  font: calc(12px*var(--app-text-scale,1))/1.68 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(12px*var(--app-text-scale,1))/1.68 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0;
 }
 
@@ -2718,7 +2718,7 @@
 .cp-black-market-scene-summary p {
   margin: 0;
   color: var(--bm-text);
-  font: calc(12px*var(--app-text-scale,1))/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(12px*var(--app-text-scale,1))/1.65 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .cp-black-market-scene-input-wrap {
@@ -2753,7 +2753,7 @@
   gap: 10px;
   margin-bottom: 7px;
   color: rgba(202, 255, 224, 0.82);
-  font: 700 calc(10px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 700 calc(10px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.08em;
 }
 
@@ -2777,7 +2777,7 @@
   padding: 10px;
   resize: vertical;
   outline: none;
-  font: calc(12px*var(--app-text-scale,1))/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(12px*var(--app-text-scale,1))/1.55 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .cp-black-market-scene-modal .cp-black-market-scene-input textarea {
@@ -2802,7 +2802,7 @@
   background: rgba(0, 255, 102, 0.08);
   color: var(--bm-green);
   border-radius: 0;
-  font: 800 calc(11px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(11px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.1em;
 }
 
@@ -2847,7 +2847,7 @@
 }
 
 .chat-black-market-card::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.055) 1px, transparent 1px, transparent 5px);
@@ -2900,7 +2900,7 @@
 .chat-black-market-card p {
   margin: 12px 0 18px;
   color: rgba(234, 255, 241, 0.72);
-  font: calc(12px*var(--app-text-scale,1))/1.62 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: calc(12px*var(--app-text-scale,1))/1.62 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .chat-black-market-card-meta {
@@ -2924,7 +2924,7 @@
   background: rgba(82, 255, 158, 0.06);
   color: #8dffbd;
   padding: 0 10px;
-  font: 800 calc(11px*var(--app-text-scale,1)) "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 800 calc(11px*var(--app-text-scale,1)) 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.08em;
   cursor: pointer;
 }

@@ -79,7 +79,7 @@
     background-color: var(--c-music-bg);
     /* Very soft light green/white base */
     background-image:
-        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E"),
+        url('data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E'),
         radial-gradient(circle at 10% 10%, var(--c-music-bg-mint) 0%, transparent 60%),
         radial-gradient(circle at 90% 10%, var(--c-music-bg-cream) 0%, transparent 60%),
         radial-gradient(circle at 85% 85%, var(--c-music-bg-lime) 0%, transparent 65%),
@@ -584,7 +584,7 @@
     background-color: var(--c-music-bg);
     /* Very soft light green/white base */
     background-image:
-        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E"),
+        url('data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E'),
         radial-gradient(circle at 10% 10%, var(--c-music-bg-mint) 0%, transparent 60%),
         radial-gradient(circle at 90% 10%, var(--c-music-bg-cream) 0%, transparent 60%),
         radial-gradient(circle at 85% 85%, var(--c-music-bg-lime) 0%, transparent 65%),
@@ -804,7 +804,7 @@
 
 /* Pivot inner dot */
 .music-player-tonearm-pivot::after {
-    content: "";
+    content: '';
     position: absolute;
     top: 50%;
     left: 50%;
@@ -854,7 +854,7 @@
 
 /* Headshell cartridge at end of bent section */
 .music-player-tonearm-head::before {
-    content: "";
+    content: '';
     position: absolute;
     bottom: 0;
     left: 50%;
@@ -985,7 +985,7 @@
 }
 
 .music-player-progress::before {
-    content: "";
+    content: '';
     position: absolute;
     left: 0;
     right: 0;
@@ -2402,7 +2402,7 @@
 }
 
 .mini-app-resize::after {
-    content: "";
+    content: '';
     position: absolute;
     right: 3px;
     bottom: 3px;
@@ -2501,12 +2501,12 @@
    memory-detail-scroll 修过同款问题），改用容器末尾 ::after 占位块 */
 .music-discovery::after,
 .music-list::after {
-    content: "";
+    content: '';
     flex: 0 0 96px;
 }
 
 .music-playlist-detail::after {
-    content: "";
+    content: '';
     display: block;
     height: 96px;
 }
@@ -3049,7 +3049,7 @@
     inset: 0;
     display: block;
     opacity: 0.5;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-image: url('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E');
 }
 
 .mp-vignette {
@@ -4772,7 +4772,7 @@
 }
 
 .music-mine-tabs button[data-active]::after {
-    content: "";
+    content: '';
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
