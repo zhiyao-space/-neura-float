@@ -1,6 +1,6 @@
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
 export function isSelfHostedModeEnabled(): boolean {
-  const raw = process.env.NEXT_PUBLIC_SELF_HOSTED_MODE || "";
-  return TRUE_VALUES.has(raw.trim().toLowerCase());
+  // 迁移版：无服务端登录接口，恒以本地用户身份直接进入（跳过登录门控）
+  return true;
 }
