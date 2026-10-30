@@ -15,6 +15,8 @@
 ## What Didn't Work
 - ❌ 原版 Vite(Rollup 4) 生产构建：8342 模块在 "rendering chunks" 阶段稳定 OOM（4GB 沙箱，manualChunks/minify false/调 heap 均无效）→ 换 `rolldown-vite`（Rust 打包器）后 17s 构建成功
 - ❌ 原仓库 `screenshot-settings.tsx` 引用的 `deleteScreenshotRecord` 在任何历史提交中都未导出（上游坏引用）→ 在 `src/lib/screenshot/config.ts` 补齐实现（删索引 + 动态 import 清理媒体引用）
+- ❌ build 与 dev 同时跑、或多个 vite 残留进程并存会 OOM/耗尽线程（Go 组件报 errno=11 "cannot create OS thread"，threads_max≈214）→ 停掉 3015 端口旧进程（lsof -i :3015 取 PID，勿宽泛 pkill）后重试
+- ❌ 沙箱到 GitHub 直连推送偶发 GnuTLS TLS 中断 / 前台长命令触发 502：http.version=HTTP/1.1 + PAT 令牌 + nohup 后台推送并轮询日志，push 后 ls-remote 验证 commit
 
 ## Lessons
 - CSS data-uri SVG 中未编码的 `url(%23n)`（utf8 裸 SVG）会被 lightningcss 压缩时报 `Unexpected token Delim('%')`，需把 `<` `>` 引号等统一 URL 编码
