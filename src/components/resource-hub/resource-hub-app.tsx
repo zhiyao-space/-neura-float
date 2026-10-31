@@ -193,6 +193,10 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
     const [busyFile, setBusyFile] = useState<string | null>(null);
     // 导入流程：选文件 → 选目的地 →（聊天室CSS再选角色）
     const [importFile, setImportFile] = useState<string | null>(null);
+    // 批量导入：勾选的文件路径集合（勾选后一次选目的地，逐个落盘）
+    const [batchPicked, setBatchPicked] = useState<string[]>([]);
+    const [importBatch, setImportBatch] = useState<string[] | null>(null);
+    const [batchPickCharacter, setBatchPickCharacter] = useState(false);
     const [pickCharacterFor, setPickCharacterFor] = useState<string | null>(null);
     const [showSourceEditor, setShowSourceEditor] = useState(false);
     const [sourceDraft, setSourceDraft] = useState<ResourceHubSource>(source);
@@ -329,6 +333,31 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
 
     useEffect(() => { reload(source); }, [reload, source]);
 
+    // 浏览位置记忆：下载/导入一个资源后点「返回」不再被弹回集市首页，
+    // 重进资源集市也回到上次浏览的分类和资源详情（索引加载完成后恢复）
+    const NAV_MEMORY_KEY = "ai_phone_resource_hub_nav_v1";
+    registerKvMigration(NAV_MEMORY_KEY);
+    const navRestoredRef = useRef(false);
+    useEffect(() => {
+        if (loadState !== "ready" || !index || navRestoredRef.current) return;
+        navRestoredRef.current = true;
+        try {
+            const saved = JSON.parse(kvGet(NAV_MEMORY_KEY) || "null") as { folder?: string; entryPath?: string } | null;
+            if (!saved) return;
+            if (saved.folder) setActiveFolder(saved.folder);
+            if (saved.entryPath) {
+                const entry = index.entries.find(e => e.path === saved.entryPath);
+                if (entry) { setActiveEntry(entry); setSelectedFile(entry.files[0] ?? null); }
+            }
+        } catch { /* 损坏的记忆直接忽略 */ }
+    }, [loadState, index]);
+    useEffect(() => {
+        kvSet(NAV_MEMORY_KEY, JSON.stringify({
+            folder: activeFolder,
+            entryPath: activeEntry?.path,
+        }));
+    }, [activeFolder, activeEntry]);
+
     // 切到我的货摊时拉取花数（仅作者本人可见的统计）
     useEffect(() => {
         if (viewMode !== "mine") return;
@@ -438,6 +467,33 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
         }
     }, [activeEntry, onNotice, source]);
 
+    /** 批量导入：同一目的地逐个落盘，全部完成后停留在当前页面继续挑下一个资源 */
+    const runBatchImport = useCallback(async (paths: string[], destination: ImportDestination, contactId?: string) => {
+        let ok = 0;
+        let fail = 0;
+        for (const path of paths) {
+            setBusyFile(path);
+            setImportingTo(contactId ?? destination);
+            try {
+                await importResourceHubFile(source, path, destination, {
+                    contactId,
+                    authorName: activeEntry?.author?.trim() || undefined,
+                    confirmTrusted: (names) => new Promise<boolean>((resolve) => setConfirmTrusted({ names, resolve })),
+                });
+                ok++;
+            } catch {
+                fail++;
+            } finally {
+                setBusyFile(null);
+                setImportingTo(null);
+            }
+        }
+        onNotice?.(`批量导入完成：成功 ${ok} 个${fail > 0 ? `，失败 ${fail} 个` : ""}。当前页面不会跳转，可以继续挑选下一个资源`);
+        setImportBatch(null);
+        setBatchPickCharacter(false);
+        setBatchPicked([]);
+    }, [activeEntry, onNotice, source]);
+
     /** 第三步点下去：落盘并收尾。 */
     const runEntryImport = useCallback(async (anchorIdentifier: string | null) => {
         if (!entryImport?.mode || !entryImport.preset) return;
@@ -454,6 +510,19 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
     }, [entryImport, onNotice]);
 
     const handlePickDestination = useCallback((destination: ImportDestination) => {
+        // 批量勾选导入：特殊流程（插件/主题/预设条目）要求逐个确认，批量只走通用目的地
+        if (importBatch) {
+            if (destination === "plugin" || destination === "theme" || destination === "preset_entry") {
+                onNotice?.("插件 / 主题 / 预设条目有单独的确认流程，请返回后逐个文件导入");
+                return;
+            }
+            if (destination === "chat_session_css") {
+                setBatchPickCharacter(true);
+                return;
+            }
+            void runBatchImport(importBatch, destination);
+            return;
+        }
         if (!importFile) return;
         const typeError = checkImportFileForDestination(destination, importFile);
         if (typeError) {
@@ -1069,16 +1138,34 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
                                         {activeEntry.files.map(file => {
                                             const base = stripAssetImageMark(file.split("/").pop() || file);
                                             const ext = fileExtension(base);
+                                            const batchChecked = batchPicked.includes(file);
                                             return (
                                                 <button
                                                     key={file}
                                                     className="rh-file-tile"
-                                                    data-selected={selectedFile === file ? "1" : undefined}
+                                                    data-selected={selectedFile === file || batchChecked ? "1" : undefined}
                                                     onClick={() => setSelectedFile(file)}
                                                 >
                                                     <FileTypePixelIcon filename={base} size={36} />
                                                     <span className="rh-file-tile-ext">{ext ? `.${ext.toUpperCase()}` : "FILE"}</span>
                                                     <span className="rh-file-tile-name">{base}</span>
+                                                    <span
+                                                        role="checkbox"
+                                                        aria-checked={batchChecked}
+                                                        aria-label={`勾选 ${base} 以批量导入`}
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setBatchPicked(current => current.includes(file) ? current.filter(p => p !== file) : [...current, file]);
+                                                        }}
+                                                        style={{
+                                                            position: "absolute", top: 4, right: 4, width: 18, height: 18,
+                                                            borderRadius: 4, border: "1.5px solid currentColor",
+                                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                                            fontSize: 12, lineHeight: 1, color: batchChecked ? "#fff" : "var(--c-icon, #888)",
+                                                            background: batchChecked ? "var(--c-action-blue, #246bfd)" : "transparent",
+                                                            opacity: batchChecked || batchPicked.length > 0 ? 1 : 0.45,
+                                                        }}
+                                                    >{batchChecked ? "✓" : ""}</span>
                                                 </button>
                                             );
                                         })}
@@ -1110,6 +1197,16 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
                                                 ? <><PixelHourglass size={13} /> 导入中</>
                                                 : "导入"}
                                         </button>
+                                        {activeEntry.files.length > 1 && (
+                                            <button
+                                                className="rh-btn"
+                                                disabled={batchPicked.length === 0 || !!importingTo}
+                                                title="勾选多个文件后一次导入到同一目的地"
+                                                onClick={() => setImportBatch([...batchPicked])}
+                                            >
+                                                {importingTo && importBatch ? <><PixelHourglass size={13} /> 批量导入中</> : `批量导入 (${batchPicked.length})`}
+                                            </button>
+                                        )}
                                     </>
                                 )}
                                 {/* 作者的编辑/删除已移到顶部作者行；这里只留管理员下架入口 */}
@@ -1133,6 +1230,55 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
                     <span>资源仓库：{source.owner}/{source.repo}</span>
                 </div>
             </div>
+
+            {/* 批量导入目的地选择（勾选多个文件后触发） */}
+            {importBatch && !batchPickCharacter && (
+                <div className="rh-dialog-overlay" onClick={importingTo ? undefined : () => setImportBatch(null)}>
+                    <div className="rh-dialog" onClick={e => e.stopPropagation()}>
+                        <div className="rh-titlebar">
+                            <span className="rh-titlebar-text">批量导入 {importBatch.length} 个文件到...</span>
+                            <span className="rh-titlebar-controls">
+                                <button className="rh-tb-btn" disabled={!!importingTo} onClick={() => setImportBatch(null)}>✕</button>
+                            </span>
+                        </div>
+                        <div className="rh-import-filename">{importBatch.map(p => stripAssetImageMark(p.split("/").pop() || p)).join("、")}</div>
+                        <div className="rh-dialog-body rh-dest-grid">
+                            {IMPORT_DESTINATIONS.map(dest => (
+                                <button key={dest.key} className="rh-dest-tile" title={dest.hint}
+                                    disabled={!!importingTo} onClick={() => handlePickDestination(dest.key)}>
+                                    {importingTo === dest.key ? <PixelHourglass size={34} /> : <DestPixelIcon dest={dest.key} />}
+                                    <span className="rh-dest-tile-label">{importingTo === dest.key ? "导入中…" : dest.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 批量导入：聊天室 CSS 选角色 */}
+            {importBatch && batchPickCharacter && (
+                <div className="rh-dialog-overlay" onClick={importingTo ? undefined : () => { setBatchPickCharacter(false); setImportBatch(null); }}>
+                    <div className="rh-dialog" onClick={e => e.stopPropagation()}>
+                        <div className="rh-titlebar">
+                            <span className="rh-titlebar-text">批量应用到哪个角色的聊天室？</span>
+                            <span className="rh-titlebar-controls">
+                                <button className="rh-tb-btn" disabled={!!importingTo} onClick={() => { setBatchPickCharacter(false); setImportBatch(null); }}>✕</button>
+                            </span>
+                        </div>
+                        <div className="rh-dialog-body rh-dest-list">
+                            {chatContacts.length > 0 ? chatContacts.map(contact => (
+                                <button key={contact.contactId} className="rh-dest" disabled={!!importingTo}
+                                    onClick={() => void runBatchImport(importBatch, "chat_session_css", contact.contactId)}>
+                                    <span className="rh-dest-label">
+                                        {importingTo === contact.contactId && <><PixelHourglass size={13} /> </>}
+                                        {contact.name}
+                                    </span>
+                                </button>
+                            )) : <div className="rh-center-hint">还没有聊天联系人</div>}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 导入目的地选择 */}
             {importFile && (

@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo, useDeferredValue, useSyncExternalStore } from "react";
-import { loadChatContacts, ChatContact, createOrGetSession, ChatSession, addChatContact, pushChatMessage, loadChatMessages } from "@/lib/chat-storage";
+import { loadChatContacts, ChatContact, createOrGetSession, ChatSession, addChatContact, pushChatMessage, loadChatMessages, CHAT_REQUEST_REPLY_EVENT } from "@/lib/chat-storage";
 import { resolveUserIdentity } from "@/lib/settings-storage";
 import { PENDING_REPLY_PREFIX } from "@/lib/friend-request-engine";
 import { loadCharacters } from "@/lib/character-storage";
 import { Character } from "@/lib/character-types";
 import { loadMomentPosts } from "@/lib/moments-storage";
+import { getCharacterWorldGroup, loadCharacterWorldGroups } from "@/lib/character-world-storage";
+
+/** 可能认识的人：关联角色条目 */
+type RelatedContact = { char: Character; relLabel: string; fromName: string };
 import {
     getPendingFriendRequests,
     clearRequestsForCharacter,
@@ -41,6 +45,7 @@ type ChatContactsListProps = {
 
 export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, pendingAddContactId, onPendingAddContactConsumed, onPendingAddContactBack }: ChatContactsListProps) {
     const [contacts, setContacts] = useState<(ChatContact & { char?: Character })[]>([]);
+    const [relatedContacts, setRelatedContacts] = useState<RelatedContact[]>([]);
     const [contactFilter, setContactFilter] = useState("");
     const [latestPost, setLatestPost] = useState<Record<string, string>>({});
     const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
@@ -109,6 +114,29 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
         enriched.sort((a, b) => (a.char?.name || "").localeCompare(b.char?.name || ""));
         setContacts(enriched);
 
+        // 关联角色：从角色所在世界的 relations 中取与已加好友角色互有关联、
+        // 但用户还没加好友的角色，作为「可能认识的人」出现在列表顶部
+        const contactIds = new Set(enriched.map(c => c.characterId));
+        const nameById = new Map(chars.map(ch => [ch.id, ch.name] as const));
+        const relatedMap = new Map<string, { char: Character; relLabel: string; fromName: string }>();
+        for (const group of loadCharacterWorldGroups()) {
+            for (const rel of group.relations) {
+                const fromIsContact = contactIds.has(rel.fromCharacterId);
+                const toIsContact = contactIds.has(rel.toCharacterId);
+                if (fromIsContact === toIsContact) continue;
+                const targetId = fromIsContact ? rel.toCharacterId : rel.fromCharacterId;
+                if (contactIds.has(targetId)) continue;
+                const targetChar = chars.find(ch => ch.id === targetId);
+                if (!targetChar || relatedMap.has(targetId)) continue;
+                relatedMap.set(targetId, {
+                    char: targetChar,
+                    relLabel: rel.label,
+                    fromName: nameById.get(fromIsContact ? rel.fromCharacterId : rel.toCharacterId) || "好友",
+                });
+            }
+        }
+        setRelatedContacts([...relatedMap.values()]);
+
         const posts = loadMomentPosts();
         const map: Record<string, string> = {};
         for (const p of posts) {
@@ -124,8 +152,40 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
         refresh();
         const handler = () => refresh();
         window.addEventListener("friend-requests-updated", handler);
-        return () => window.removeEventListener("friend-requests-updated", handler);
+        window.addEventListener("character-worlds-updated", handler);
+        return () => {
+            window.removeEventListener("friend-requests-updated", handler);
+            window.removeEventListener("character-worlds-updated", handler);
+        };
     }, [refresh]);
+
+    /** 添加关联角色为好友：走标准加好友链路，并让两位角色互相打招呼（自动互动） */
+    const handleAddRelatedContact = (rel: RelatedContact) => {
+        const { char, relLabel, fromName } = rel;
+        addChatContact(char.id);
+        const newSession = createOrGetSession(char.id);
+        const identity = resolveUserIdentity();
+        pushChatMessage({
+            sessionId: newSession.id,
+            role: "system",
+            content: `${identity?.name || "你"}通过 ${fromName} 的关系（${fromName}是TA的${relLabel}）添加了 ${char.name || "用户"}，现在可以开始聊天了。`,
+            status: "sent",
+        });
+        // 让新角色主动和用户打个招呼，也通知介绍人那边有人来搭话
+        kvSet(PENDING_REPLY_PREFIX + newSession.id, "1");
+        const fromSessions = loadChatSessions().filter(s => !s.isGroup && s.contactId && s.contactId !== char.id && (chars.find(ch => ch.id === s.contactId)?.name === fromName));
+        for (const fs of fromSessions) {
+            pushChatMessage({
+                sessionId: fs.id,
+                role: "system",
+                content: `系统：你把 ${char.name || "朋友"} 介绍给了用户，记得找机会帮他们互相熟悉一下。`,
+                status: "sent",
+            });
+            window.dispatchEvent(new CustomEvent(CHAT_REQUEST_REPLY_EVENT, { detail: { sessionId: fs.id, handled: true, busy: false } }));
+        }
+        refresh();
+        onSelectSession(newSession);
+    };
 
     /** Group contacts by pinyin initial */
     const { grouped, indexLetters } = useMemo(() => {
@@ -256,6 +316,32 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                                 <div className="ts-13 text-[var(--c-text)] opacity-80 truncate font-normal">内置创作助手</div>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Related characters: 可能认识的人（来自世界关系线） */}
+                {relatedContacts.length > 0 && (
+                    <div className="mb-3">
+                        <div className="contact-letter-header text-[var(--c-icon)] py-2 ts-13 pl-1 font-semibold">可能认识的人</div>
+                        {relatedContacts.map(rel => (
+                            <div key={rel.char.id} className="minimal-list-item">
+                                <div className="minimal-avatar-wrapper">
+                                    {rel.char.avatar ? (
+                                        <img src={rel.char.avatar} className="w-full h-full object-cover rounded-full" alt="" />
+                                    ) : (
+                                        <ChatFallbackAvatar className="rounded-full" />
+                                    )}
+                                </div>
+                                <div className="flex-1 overflow-hidden h-[48px] flex flex-col justify-center gap-1">
+                                    <div className="ts-16 font-medium text-[var(--c-text-title)] truncate">{rel.char.name || "UNNAMED"}</div>
+                                    <div className="ts-13 text-[var(--c-text)] opacity-80 truncate font-normal">{rel.fromName}的{rel.relLabel}</div>
+                                </div>
+                                <button
+                                    className="ui-btn ui-btn-success shrink-0 !py-1 !px-3 ts-13"
+                                    onClick={e => { e.stopPropagation(); handleAddRelatedContact(rel); }}
+                                >添加</button>
+                            </div>
+                        ))}
                     </div>
                 )}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
-import { getAllPosts, deleteMomentPost, getUnreadMomentsNotifications, saveMomentsLastSeen, addMomentComment } from "@/lib/moments-storage";
+import { getAllPosts, deleteMomentPost, getUnreadMomentsNotifications, saveMomentsLastSeen, addMomentComment, addMomentPost } from "@/lib/moments-storage";
 import { loadChatContacts } from "@/lib/chat-storage";
 import { resolveUserIdentity, USER_IDENTITIES_UPDATED_EVENT } from "@/lib/settings-storage";
 import { saveChatImageToIndexedDB, getChatImageFromIndexedDB } from "@/lib/chat-asset-storage";
@@ -343,6 +343,25 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
         window.dispatchEvent(new CustomEvent("moments-updated"));
     };
 
+    /** 转发动态：以用户身份重新发一条，正文带「转发自 @作者」标记（图片一并带上） */
+    const handleForwardPost = (post: MomentPost) => {
+        const authorName = post.authorType === "user"
+            ? (userIdentity?.name ?? "我")
+            : (loadCharacters().find(c => c.id === post.authorId)?.name ?? "未知");
+        addMomentPost({
+            authorType: "user",
+            authorId: "user",
+            content: post.content ? `⟳ 转发自 ${authorName}：\n${post.content}` : `⟳ 转发自 ${authorName}`,
+            photoUrl: post.photoUrl,
+            photoDescription: post.photoDescription,
+            photoGenerationStatus: post.photoGenerationStatus === "pending" ? undefined : post.photoGenerationStatus,
+            photoGenerationPrompt: post.photoGenerationPrompt,
+            visibility: [],
+        });
+        refreshPosts();
+        window.dispatchEvent(new CustomEvent("moments-updated"));
+    };
+
     const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -560,6 +579,7 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
                             onRequestDelete={setConfirmDeleteId}
                             onOpenCommentComposer={openCommentComposer}
                             onOpenReplyComposer={openReplyComposer}
+                            onForward={handleForwardPost}
                         />
                     ))
                 )}

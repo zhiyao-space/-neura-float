@@ -536,3 +536,94 @@ export function VoiceRecordModal({ characterId, onSend, onClose }: VoiceRecordMo
         </div>
     );
 }
+
+// ── File Input Modal（任意文件/图片上传）────────────
+
+interface FileInputModalProps {
+ onSend: (fileName: string, fileDataUrl: string, fileType: "image" | "video" | "audio" | "file", description: string) => void;
+ onClose: () => void;
+}
+
+function classifyFile(file: File): "image" | "video" | "audio" | "file" {
+ if (file.type.startsWith("image/")) return "image";
+ if (file.type.startsWith("video/")) return "video";
+ if (file.type.startsWith("audio/")) return "audio";
+ return "file";
+}
+
+function formatFileSize(bytes: number): string {
+ if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+ if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+ return `${bytes} B`;
+}
+
+export function FileInputModal({ onSend, onClose }: FileInputModalProps) {
+ const [desc, setDesc] = useState("");
+ const [picked, setPicked] = useState<{ file: File; dataUrl: string } | null>(null);
+ const [error, setError] = useState("");
+ const fileInputRef = useRef<HTMLInputElement>(null);
+
+ // 约 20MB 上限：data URL 会膨胀 4/3，避免超出 IndexedDB 单条合理体积
+ const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+ setError("");
+ const file = e.target.files?.[0];
+ if (!file) return;
+ if (file.size > MAX_FILE_BYTES) {
+ setError(`文件过大（${formatFileSize(file.size)}），最大支持 20 MB`);
+ return;
+ }
+ const reader = new FileReader();
+ reader.onload = () => setPicked({ file, dataUrl: reader.result as string });
+ reader.onerror = () => setError("文件读取失败，请重试");
+ reader.readAsDataURL(file);
+ };
+
+ const fileType = picked ? classifyFile(picked.file) : "file";
+ const isPreviewableImage = fileType === "image";
+
+ return (
+ <div className="modal-overlay" onClick={onClose}>
+ <div onClick={e => e.stopPropagation()} className="modal-dialog">
+ <div className="ts-16 font-semibold text-center text-[var(--c-text)]">发送文件</div>
+ <div
+ className="w-full rounded-xl flex flex-col items-center justify-center ui-placeholder-gradient overflow-hidden cursor-pointer relative"
+ style={{ minHeight: isPreviewableImage && picked ? "auto" : "110px" }}
+ onClick={() => fileInputRef.current?.click()}
+ >
+ {picked && isPreviewableImage ? (
+ <img src={picked.dataUrl} alt="preview" className="w-full h-auto rounded-xl" style={{ maxHeight: "240px", objectFit: "contain" }} />
+ ) : picked ? (
+ <div className="flex flex-col items-center gap-1 py-5">
+ <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--c-icon)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+ <span className="ts-14 text-[var(--c-text)] font-medium max-w-[220px] truncate">{picked.file.name}</span>
+ <span className="ts-12 text-[var(--c-icon)]">{formatFileSize(picked.file.size)} · 点击重选</span>
+ </div>
+ ) : (
+ <div className="flex flex-col items-center gap-2 py-6">
+ <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--c-icon)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+ <span className="ts-12 text-[var(--c-icon)]">点击选择文件（图片/视频/音频/文档，≤20MB）</span>
+ </div>
+ )}
+ <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+ </div>
+ {error && <div className="ts-12 text-red-500 text-center mt-1">{error}</div>}
+ <input
+ value={desc}
+ onChange={e => setDesc(e.target.value)}
+ placeholder={picked && !isPreviewableImage ? "给文件配一句话（可选）" : "配图描述（可选）"}
+ className="ui-input w-full mt-2"
+ />
+ <div className="flex gap-3 w-full mt-3">
+ <button onClick={onClose} className="ui-btn ui-btn-ghost ui-btn-bordered-ghost flex-1">取消</button>
+ <button
+ onClick={() => { if (picked) onSend(picked.file.name, picked.dataUrl, fileType, desc.trim()); }}
+ disabled={!picked}
+ className="ui-btn ui-btn-success flex-1"
+ >发送</button>
+ </div>
+ </div>
+ </div>
+ );
+}

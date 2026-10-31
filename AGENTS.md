@@ -10,7 +10,10 @@
 - 路由：TanStack Router 文件路由替代 Next App Router，页面仅 5 个：`/`（MainApp 虚拟手机）、`/world-builder`、`/characters`、`/verify`、`/app-market/admin`
 - 原 `next/dynamic` → React `lazy + Suspense`（WorldBuilder 的 SceneViewport）
 - 原 19 组 `app/api/*` 服务端路由未迁移（Vite 无服务端运行时），依赖它们的功能（图片生成代理、语音克隆、Web Push、鉴权登录、微信助手等）会请求失败，后续可用 Meoo Cloud Edge Functions 补齐
-- 构建配置在 vite.config.ts 拆了 vendor-three / vendor-markdown / vendor-media 三个 manualChunks
+- 样式集中在 `src/styles/*.css`（由 `src/styles.css` @import 聚合），资源集市（rh-*）类名在 `src/styles/` 下检索时注意 CSS 文件在 src/styles/ 而不是 src/
+- 角色世界关系：`src/lib/character-world-storage.ts` 维护 CharacterWorldGroup（relations 含 label），是角色关联功能的唯一数据源；联系人列表（chat-contacts-list.tsx）的「可能认识的人」与提示词注入（formatCharacterRelationsForPrompt）都读它
+- 聊天富输入：chat-room.tsx 的 RichModalKind 弹窗体系 + rich-input-modals.tsx 弹窗组件；任意文件上传走 `storeMediaBase64`（media-store:// 引用）→ mediaType "media_file"
+- 资源集市浏览位置记忆键 `ai_phone_resource_hub_nav_v1`（kv 存储 folder + entryPath），索引进度 ready 后恢复
 
 ## What Didn't Work
 - ❌ 原版 Vite(Rollup 4) 生产构建：8342 模块在 "rendering chunks" 阶段稳定 OOM（4GB 沙箱，manualChunks/minify false/调 heap 均无效）→ 换 `rolldown-vite`（Rust 打包器）后 17s 构建成功
@@ -21,3 +24,4 @@
 ## Lessons
 - CSS data-uri SVG 中未编码的 `url(%23n)`（utf8 裸 SVG）会被 lightningcss 压缩时报 `Unexpected token Delim('%')`，需把 `<` `>` 引号等统一 URL 编码
 - 预览环境 WebSocket 502/SSL 报错来自沙箱代理不支持 HMR ws，属噪音；`cdn.jsdelivr.net` 在沙箱内不可达，外部 CDN 资源会 ERR_CONNECTION_RESET
+- 聊天室后台生成链路：`requestBackgroundChatReply`（follow-up-service）+ `CHAT_REQUEST_REPLY_EVENT`（聊天室开着时原生生成，否则 desktop-shell 兜底监听转后台）；给会话塞 `PENDING_REPLY_PREFIX + sessionId` 的 kv 标记可让角色主动开口

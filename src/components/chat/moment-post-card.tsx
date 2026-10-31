@@ -21,7 +21,7 @@ import { splitBilingualText } from "@/lib/bilingual-text";
 import { retryMomentGeneratedPhoto } from "@/lib/generated-image-retry";
 import { hasCharacterReferenceImage } from "@/lib/image-generation-service";
 import { GeneratedImageErrorDialog } from "./generated-image-error-dialog";
-import { Trash2, MoreHorizontal, MapPin, Heart, MessageCircle, Pencil } from "lucide-react";
+import { Trash2, MoreHorizontal, MapPin, Heart, MessageCircle, Pencil, Share2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui";
 
 type Props = {
@@ -30,6 +30,8 @@ type Props = {
     onRequestDelete?: (postId: string) => void;
     onOpenCommentComposer?: (post: MomentPost) => void;
     onOpenReplyComposer?: (post: MomentPost, comment: MomentComment, replyName: string) => void;
+    /** 转发动态：把这条帖子以用户身份重新发一条 */
+    onForward?: (post: MomentPost) => void;
 };
 
 const DEFAULT_MOMENT_AVATAR_SRC = "/images/default-moment-avatar.png";
@@ -38,7 +40,7 @@ function MomentDefaultAvatar({ alt = "" }: { alt?: string }) {
     return <img src={DEFAULT_MOMENT_AVATAR_SRC} alt={alt} className="feed-default-avatar w-full h-full object-cover" />;
 }
 
-export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentComposer, onOpenReplyComposer }: Props) {
+export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentComposer, onOpenReplyComposer, onForward }: Props) {
     const [comments, setComments] = useState<MomentComment[]>(() => loadMomentComments(post.id));
     const [showPhotoPromptEditor, setShowPhotoPromptEditor] = useState(false);
     const [photoPromptDraft, setPhotoPromptDraft] = useState("");
@@ -336,6 +338,18 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
                             <Pencil size={14} strokeWidth={1.75} />
                             <span>编辑动态</span>
                         </button>
+                        {onForward && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowPostActions(false);
+                                    onForward(post);
+                                }}
+                            >
+                                <Share2 size={14} strokeWidth={1.75} />
+                                <span>转发动态</span>
+                            </button>
+                        )}
                         {onRequestDelete && (
                             <button
                                 type="button"

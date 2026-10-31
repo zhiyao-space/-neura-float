@@ -1,0 +1,27 @@
+[
+  {
+    "content": "朋友圈动态：转发功能",
+    "id": "m1",
+    "status": "completed"
+  },
+  {
+    "content": "聊天页：支持上传任意文件和图片",
+    "id": "m2",
+    "status": "completed"
+  },
+  {
+    "content": "角色关联：关联角色出现在列表并自动互动",
+    "id": "m3",
+    "status": "completed"
+  },
+  {
+    "content": "资源集市：导入后不跳回+批量勾选导入",
+    "id": "m4",
+    "status": "completed"
+  },
+  {
+    "content": "build+dev 双门禁验证",
+    "id": "m5",
+    "status": "completed"
+  }
+]
