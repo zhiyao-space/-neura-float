@@ -22,3 +22,4 @@
 - 预览环境 WebSocket 502/SSL 报错来自沙箱代理不支持 HMR ws，属噪音；`cdn.jsdelivr.net` 在沙箱内不可达
 - 存量 typecheck（tsc --noEmit）有约 50 处历史错误（qrcode 缺声明、ui/button 导出名不符等），build 本身可通过；改动的文件需自查别新增错误
 - 前台短时 `timeout N git push -v --progress` 能拿到完整诊断输出；后台 nohup 推送日志为空时多半是卡在凭证或静默挂起
+- 聊天室对 role="user" 且 content 为空的消息走 isHiddenChatFlowMessage → display:none；新增纯媒体气泡类型必须同时加进 chat-room.tsx 的 CHAT_VISUAL_MEDIA_TYPES 和 CHAT_MEDIA_BUBBLE_TYPES 两个集合，否则落库成功但界面不可见
