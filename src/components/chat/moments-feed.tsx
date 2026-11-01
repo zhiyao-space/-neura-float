@@ -5,6 +5,7 @@ import { getAllPosts, deleteMomentPost, getUnreadMomentsNotifications, saveMomen
 import { loadChatContacts } from "@/lib/chat-storage";
 import { resolveUserIdentity, USER_IDENTITIES_UPDATED_EVENT } from "@/lib/settings-storage";
 import { saveChatImageToIndexedDB, getChatImageFromIndexedDB } from "@/lib/chat-asset-storage";
+import { loadCharacters } from "@/lib/character-storage";
 import type { MomentComment, MomentPost } from "@/lib/moments-types";
 import { MomentPostCard } from "./moment-post-card";
 import { MomentsCompose } from "./moments-compose";
@@ -348,18 +349,24 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
         const authorName = post.authorType === "user"
             ? (userIdentity?.name ?? "我")
             : (loadCharacters().find(c => c.id === post.authorId)?.name ?? "未知");
-        addMomentPost({
-            authorType: "user",
-            authorId: "user",
-            content: post.content ? `⟳ 转发自 ${authorName}：\n${post.content}` : `⟳ 转发自 ${authorName}`,
-            photoUrl: post.photoUrl,
-            photoDescription: post.photoDescription,
-            photoGenerationStatus: post.photoGenerationStatus === "pending" ? undefined : post.photoGenerationStatus,
-            photoGenerationPrompt: post.photoGenerationPrompt,
-            visibility: [],
-        });
-        refreshPosts();
-        window.dispatchEvent(new CustomEvent("moments-updated"));
+        try {
+            const created = addMomentPost({
+                authorType: "user",
+                authorId: "user",
+                content: post.content ? `⟳ 转发自 ${authorName}：\n${post.content}` : `⟳ 转发自 ${authorName}`,
+                photoUrl: post.photoUrl,
+                photoDescription: post.photoDescription,
+                photoGenerationStatus: post.photoGenerationStatus === "pending" ? undefined : post.photoGenerationStatus,
+                photoGenerationPrompt: post.photoGenerationPrompt,
+                visibility: [],
+            });
+            if (created) {
+                refreshPosts();
+                window.dispatchEvent(new CustomEvent("moments-updated"));
+            }
+        } catch (err) {
+            console.error("[MomentsFeed] forward failed:", err);
+        }
     };
 
     const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
