@@ -7277,3 +7277,70 @@
   background: currentColor;
   animation: chat-stream-cursor-blink 1s steps(2, start) infinite;
 }
+
+/* ── Moment share card（朋友圈动态转发到私信）───────── */
+.chat-moment-share-card {
+ width: 236px;
+ overflow: hidden;
+ border-radius: 8px;
+ background: #ffffff;
+ border: none;
+ box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+ cursor: pointer;
+}
+
+.chat-moment-share-head {
+ display: flex;
+ align-items: center;
+ gap: 7px;
+ padding: 9px 11px 0;
+ color: #4a6b5a;
+ font-size: calc(9px*var(--app-text-scale,1));
+ font-weight: 600;
+}
+
+.chat-moment-share-mark {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ min-width: 34px;
+ height: 16px;
+ border-radius: 4px;
+ background: #07c160;
+ color: #fff;
+ font-size: calc(8.1px*var(--app-text-scale,1));
+}
+
+.chat-moment-share-body {
+ display: flex;
+ flex-direction: column;
+ gap: 8px;
+ padding: 9px 11px 11px;
+}
+
+.chat-moment-share-photo {
+ width: 100%;
+ max-height: 160px;
+ object-fit: cover;
+ border-radius: 6px;
+ display: block;
+}
+
+.chat-moment-share-text {
+ color: #2c2c2c;
+ font-size: calc(11.7px*var(--app-text-scale,1));
+ line-height: 1.4;
+ white-space: pre-wrap;
+ word-break: break-word;
+}
+
+.chat-moment-share-more {
+ display: inline-block;
+ margin-left: 4px;
+ background: none;
+ border: none;
+ padding: 0;
+ color: #576b95;
+ font-size: calc(10.8px*var(--app-text-scale,1));
+ cursor: pointer;
+}

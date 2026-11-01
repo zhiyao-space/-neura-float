@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect, useRef, useMemo } from "react";
 import { getAllPosts, deleteMomentPost, getUnreadMomentsNotifications, saveMomentsLastSeen, addMomentComment, addMomentPost } from "@/lib/moments-storage";
-import { loadChatContacts } from "@/lib/chat-storage";
+import { loadChatContacts, createOrGetSession, pushChatMessage, ChatContact } from "@/lib/chat-storage";
 import { resolveUserIdentity, USER_IDENTITIES_UPDATED_EVENT } from "@/lib/settings-storage";
 import { saveChatImageToIndexedDB, getChatImageFromIndexedDB } from "@/lib/chat-asset-storage";
 import { loadCharacters } from "@/lib/character-storage";
@@ -344,30 +344,55 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
         window.dispatchEvent(new CustomEvent("moments-updated"));
     };
 
-    /** 转发动态：以用户身份重新发一条，正文带「转发自 @作者」标记（图片一并带上） */
+    /** 转发动态到私信：弹出联系人选择器，选中后以卡片消息发进该会话 */
+    const [forwardPost, setForwardPost] = useState<MomentPost | null>(null);
+
     const handleForwardPost = (post: MomentPost) => {
-        const authorName = post.authorType === "user"
-            ? (userIdentity?.name ?? "我")
-            : (loadCharacters().find(c => c.id === post.authorId)?.name ?? "未知");
+        setForwardPost(post);
+    };
+
+    const handleForwardToContact = (contact: ChatContact) => {
+        if (!forwardPost) return;
         try {
-            const created = addMomentPost({
-                authorType: "user",
-                authorId: "user",
-                content: post.content ? `⟳ 转发自 ${authorName}：\n${post.content}` : `⟳ 转发自 ${authorName}`,
-                photoUrl: post.photoUrl,
-                photoDescription: post.photoDescription,
-                photoGenerationStatus: post.photoGenerationStatus === "pending" ? undefined : post.photoGenerationStatus,
-                photoGenerationPrompt: post.photoGenerationPrompt,
-                visibility: [],
-            });
-            if (created) {
-                refreshPosts();
-                window.dispatchEvent(new CustomEvent("moments-updated"));
+            const authorName = forwardPost.authorType === "user"
+                ? (userIdentity?.name ?? "我")
+                : (loadCharacters().find(c => c.id === forwardPost.authorId)?.name ?? "未知");
+            const session = createOrGetSession(contact.characterId);
+            if (!session) {
+                console.error("[MomentsFeed] forward: no session for", contact.characterId);
+                return;
             }
+            pushChatMessage({
+                sessionId: session.id,
+                role: "user",
+                content: "",
+                mediaType: "moment_share",
+                mediaData: {
+                    momentShareOriginalPostId: forwardPost.id,
+                    momentShareAuthorName: authorName,
+                    momentShareAuthorType: forwardPost.authorType,
+                    momentShareContent: forwardPost.content,
+                    momentSharePhotoAssetId: forwardPost.photoUrl?.startsWith("asset://") ? forwardPost.photoUrl.slice(8) : undefined,
+                },
+            });
+            setForwardPost(null);
+            window.dispatchEvent(new CustomEvent("chat-message-pushed", { detail: { sessionId: session.id } }));
         } catch (err) {
             console.error("[MomentsFeed] forward failed:", err);
         }
     };
+
+    const forwardContacts = useMemo(() => {
+        if (!forwardPost) return [];
+        return loadChatContacts().map(c => {
+            const char = loadCharacters().find(ch => ch.id === c.characterId);
+            return {
+                ...c,
+                displayName: char?.name || c.nickname || "未命名",
+                avatarUrl: char?.avatar as string | undefined,
+            };
+        });
+    }, [forwardPost]);
 
     const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -410,6 +435,38 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
                 message={photoFailureNotice}
                 onClose={() => setPhotoFailureNotice(null)}
             />
+        )}
+        {/* 转发到私信：选择联系人 */}
+        {forwardPost && (
+            <div className="modal-overlay" onClick={() => setForwardPost(null)}>
+                <div className="modal-dialog" onClick={e => e.stopPropagation()} style={{ maxHeight: "70vh", overflowY: "auto" }}>
+                    <div className="ts-16 font-semibold text-center text-[var(--c-text)] mb-2">转发动态到私信</div>
+                    {forwardContacts.length === 0 ? (
+                        <div className="ts-13 text-[var(--c-icon)] text-center py-6">还没有聊天联系人</div>
+                    ) : (
+                        <div className="flex flex-col">
+                            {forwardContacts.map(c => (
+                                <button
+                                    key={c.characterId}
+                                    type="button"
+                                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/5 active:bg-black/10 text-left"
+                                    onClick={() => handleForwardToContact(c)}
+                                >
+                                    {c.avatarUrl ? (
+                                        <img src={c.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-none" />
+                                    ) : (
+                                        <div className="w-9 h-9 rounded-full bg-black/10 flex items-center justify-center ts-14 flex-none">{(c.displayName || "?").slice(0, 1)}</div>
+                                    )}
+                                    <span className="ts-14 text-[var(--c-text)] truncate">{c.displayName}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <div className="flex gap-3 w-full mt-3">
+                        <button onClick={() => setForwardPost(null)} className="ui-btn ui-btn-ghost ui-btn-bordered-ghost flex-1">取消</button>
+                    </div>
+                </div>
+            </div>
         )}
         <PageShell
             title="动态"

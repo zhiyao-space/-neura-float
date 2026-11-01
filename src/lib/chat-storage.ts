@@ -127,6 +127,7 @@ export type ChatMessage = {
         | "payment_request" | "accept_payment_request" | "decline_payment_request"
         | "music" | "music_share" | "music_notify" | "music_not_found"
         | "xiaohongshu_note_share"
+        | "moment_share"
         | "gift"
         | "contact_card"
         | "app_card"
@@ -225,6 +226,12 @@ export type ChatMessage = {
         xiaohongshuImageAssetId?: string;
         xiaohongshuCoverIcon?: string;
         xiaohongshuTone?: string;
+        /** 朋友圈动态转发卡片：原帖信息 */
+        momentShareOriginalPostId?: string;   // 原帖 id（点击卡片可跳回朋友圈）
+        momentShareAuthorName?: string;       // 原作者名
+        momentShareContent?: string;          // 原帖正文
+        momentSharePhotoAssetId?: string;     // 原帖图片（chat-asset-storage 引用）
+        momentShareAuthorType?: "user" | "character";
         callDuration?: string;    // 通话时长（如 05:23）
         /** 用户手动标记的「通话开头」(右键菜单)。老通话留痕丢失时用它圈定区间起点。 */
         callStartMarker?: boolean;
@@ -568,6 +575,7 @@ const MEDIA_PREVIEW_MAP: Record<string, string> = {
     music: "[音乐]",
     music_share: "[音乐分享]",
     xiaohongshu_note_share: "[小红书分享]",
+    moment_share: "[朋友圈动态]",
     app_card: "[应用卡片]",
     tool_notice: "[执行动作]",
     system_instruction: "[系统指令]",

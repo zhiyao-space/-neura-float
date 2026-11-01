@@ -30,6 +30,12 @@ export type PhoneChatAppProps = {
 
 export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSessionId, onSessionChange, sharePayload, onShareDone }: PhoneChatAppProps) {
     const [activeTab, setActiveTab] = useState<TabKey>("messages");
+    // 朋友圈转发卡片点击 → 跳到动态页
+    useEffect(() => {
+        const open = () => { setActiveSession(null); setActiveTab("feeds"); };
+        window.addEventListener("chat-open-moments", open);
+        return () => window.removeEventListener("chat-open-moments", open);
+    }, []);
     const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
     const [activeMascot, setActiveMascot] = useState(false);
     // Chat app-level custom CSS (affects all chat pages, lower priority than per-session CSS)

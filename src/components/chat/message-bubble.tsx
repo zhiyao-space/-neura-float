@@ -122,6 +122,8 @@ export const MessageBubble = memo(function MessageBubble({ msg, onUpdate, charNa
             return <MediaFileBubble msg={msg} onUpdate={onUpdate} characterId={characterId} />;
         case "xiaohongshu_note_share":
             return <XiaohongshuShareBubble msg={msg} />;
+        case "moment_share":
+            return <MomentShareBubble msg={msg} />;
         case "audio":
             return <VoiceMessageBubble msg={msg} characterId={characterId} onUpdate={onUpdate} defaultTranslationExpanded={defaultTranslationExpanded} />;
         case "meeting_invite":
@@ -2315,6 +2317,53 @@ function XiaohongshuShareBubble({ msg }: { msg: ChatMessage }) {
                     {tags.slice(0, 3).map(tag => <span key={tag}>#{tag}</span>)}
                 </div>
             ) : null}
+        </div>
+    );
+}
+
+// ── Moment Share Bubble（朋友圈动态转发卡片）──────────
+
+function MomentShareBubble({ msg }: { msg: ChatMessage }) {
+    const data = msg.mediaData;
+    const author = data?.momentShareAuthorName || "朋友圈用户";
+    const content = data?.momentShareContent || "";
+    const [photoUrl, setPhotoUrl] = useState("");
+    const [showFull, setShowFull] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        const assetId = data?.momentSharePhotoAssetId;
+        if (!assetId) { setPhotoUrl(""); return; }
+        getChatImageFromIndexedDB(assetId).then(url => { if (!cancelled) setPhotoUrl(url || ""); }).catch(() => {});
+        return () => { cancelled = true; };
+    }, [data?.momentSharePhotoAssetId]);
+
+    // 点击卡片跳回朋友圈（切换到 feeds 标签）
+    const openMoments = useCallback(() => {
+        window.dispatchEvent(new CustomEvent("chat-open-moments"));
+    }, []);
+
+    return (
+        <div className="chat-moment-share-card" onClick={openMoments}>
+            <div className="chat-moment-share-head">
+                <span className="chat-moment-share-mark">朋友圈</span>
+                <span>{author} 的动态 · 点击查看</span>
+            </div>
+            <div className="chat-moment-share-body">
+                {photoUrl ? <img src={photoUrl} alt="" className="chat-moment-share-photo" /> : null}
+                <div className="chat-moment-share-text">
+                    {content
+                        ? (showFull || content.length <= 80 ? content : `${content.slice(0, 80)}…`)
+                        : "（无文字内容）"}
+                    {content.length > 80 && (
+                        <button
+                            type="button"
+                            className="chat-moment-share-more"
+                            onClick={(e) => { e.stopPropagation(); setShowFull(v => !v); }}
+                        >{showFull ? "收起" : "展开"}</button>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
