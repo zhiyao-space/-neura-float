@@ -2325,10 +2325,7 @@ function XiaohongshuShareBubble({ msg }: { msg: ChatMessage }) {
 
 function MomentShareBubble({ msg }: { msg: ChatMessage }) {
     const data = msg.mediaData;
-    const author = data?.momentShareAuthorName || "朋友圈用户";
-    const content = data?.momentShareContent || "";
     const [photoUrl, setPhotoUrl] = useState("");
-    const [showFull, setShowFull] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -2345,24 +2342,15 @@ function MomentShareBubble({ msg }: { msg: ChatMessage }) {
 
     return (
         <div className="chat-moment-share-card" onClick={openMoments}>
-            <div className="chat-moment-share-head">
-                <span className="chat-moment-share-mark">朋友圈</span>
-                <span>{author} 的动态 · 点击查看</span>
-            </div>
-            <div className="chat-moment-share-body">
-                {photoUrl ? <img src={photoUrl} alt="" className="chat-moment-share-photo" /> : null}
-                <div className="chat-moment-share-text">
-                    {content
-                        ? (showFull || content.length <= 80 ? content : `${content.slice(0, 80)}…`)
-                        : "（无文字内容）"}
-                    {content.length > 80 && (
-                        <button
-                            type="button"
-                            className="chat-moment-share-more"
-                            onClick={(e) => { e.stopPropagation(); setShowFull(v => !v); }}
-                        >{showFull ? "收起" : "展开"}</button>
-                    )}
+            <div className="chat-moment-share-main">
+                <div className="chat-moment-share-title">
+                    {content ? content : "【朋友圈动态】"}
                 </div>
+                {photoUrl ? <img src={photoUrl} alt="" className="chat-moment-share-thumb" /> : null}
+            </div>
+            <div className="chat-moment-share-source">
+                <span className="chat-moment-share-logo">⟳</span>
+                <span className="chat-moment-share-app">朋友圈</span>
             </div>
         </div>
     );
