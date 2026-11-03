@@ -2340,11 +2340,14 @@ function MomentShareBubble({ msg }: { msg: ChatMessage }) {
         window.dispatchEvent(new CustomEvent("chat-open-moments"));
     }, []);
 
+    // 卡片正文：优先用转发时快照的原帖内容，兜底消息自身的 content
+    const shareText = data?.momentShareContent || msg.content || "【朋友圈动态】";
+
     return (
         <div className="chat-moment-share-card" onClick={openMoments}>
             <div className="chat-moment-share-main">
                 <div className="chat-moment-share-title">
-                    {content ? content : "【朋友圈动态】"}
+                    {shareText}
                 </div>
                 {photoUrl ? <img src={photoUrl} alt="" className="chat-moment-share-thumb" /> : null}
             </div>
