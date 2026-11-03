@@ -376,7 +376,10 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
                 },
             });
             setForwardPost(null);
-            window.dispatchEvent(new CustomEvent("chat-message-pushed", { detail: { sessionId: session.id } }));
+            // 通知已挂载（隐藏缓存）的聊天室重载消息：
+            // ChatRoom 只监听 chat-messages-updated（chat-room.tsx onExternalMessageUpdate），
+            // pushChatMessage 内部派的 chat-message-pushed 只喂会话列表预览，房间收不到
+            window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: session.id } }));
         } catch (err) {
             console.error("[MomentsFeed] forward failed:", err);
         }
