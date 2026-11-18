@@ -1,5 +1,5 @@
 import type { ImageGenerationSettings, NovelAiPreset } from "./settings-types";
-import { loadBindingConfig, loadImageGenerationSettings, resolveBinding, DEFAULT_NOVELAI_PRESET } from "./settings-storage";
+import { loadBindingConfig, loadImageGenerationSettings, resolveBinding, saveImageGenerationSettings, DEFAULT_NOVELAI_PRESET } from "./settings-storage";
 import { applyImageGenerationBinding } from "./image-generation-binding";
 import JSZip from "jszip";
 import { getChatImageFromIndexedDB } from "./chat-asset-storage";
@@ -412,6 +412,51 @@ async function generateImageViaServerOrProxy(params: {
   return generateImageDirect(params);
 }
 
+/** 懒编码：原图 -> encode-vibe 编码 base64（官方 /ai/encode-vibe，中转站兼容 /v1 前缀）。 */
+async function encodeVibeImage(params: {
+  apiKey: string;
+  baseUrl: string;
+  image: string;
+  informationExtracted: number;
+  model: string;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const base = normalizeBaseUrl(params.baseUrl || NOVELAI_DEFAULT_BASE_URL);
+  const body = JSON.stringify({
+    image: params.image,
+    information_extracted: params.informationExtracted,
+    model: params.model,
+  });
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${params.apiKey}`,
+    "Content-Type": "application/json",
+  };
+  const candidates = /novelai\.net/i.test(base)
+    ? [`${base}/ai/encode-vibe`]
+    : [`${base}/v1/ai/encode-vibe`, `${base}/ai/encode-vibe`];
+  let lastError: Error | null = null;
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { method: "POST", headers, body, signal: params.signal });
+      if (res.status === 404 || res.status === 405) { lastError = new Error(`encode-vibe 接口不存在（${url}）`); continue; }
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`encode-vibe 编码失败 ${res.status}: ${text.slice(0, 160)}`);
+      }
+      const buf = await res.arrayBuffer();
+      if (buf.byteLength === 0) throw new Error("encode-vibe 返回为空");
+      let binary = "";
+      const uint8 = new Uint8Array(buf);
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+      return btoa(binary);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("encode-vibe 接口不存在")) { lastError = error; continue; }
+      throw error;
+    }
+  }
+  throw lastError || new Error("encode-vibe 编码失败");
+}
+
 async function generateNovelAiDirect(params: {
   apiKey: string;
   baseUrl: string;
@@ -450,10 +495,20 @@ async function generateNovelAiDirect(params: {
       sm: preset.smea === true,
       sm_dyn: preset.smeaDyn === true,
       dynamic_thresholding: false,
-      ...(vibes.length > 0 ? {
+      ...(vibes.length > 0 && normalizeNovelAiModel(preset.model).includes("nai-diffusion-3") ? {
+        // V3：单值字段
+        reference_image: vibes[0].image,
+        reference_information_extracted: vibes[0].informationExtracted,
+        reference_strength: vibes[0].referenceStrength,
+        normalize_reference_strength: true,
+      } : {}),
+      ...(vibes.length > 0 && !normalizeNovelAiModel(preset.model).includes("nai-diffusion-3") ? {
+        // V4/V4.5：三个平行数组按下标一一对应，编码只认 encode-vibe 结果
+        use_reference_image: true,
         reference_image_multiple: vibes.map(v => v.image),
         reference_information_extracted_multiple: vibes.map(v => v.informationExtracted),
         reference_strength_multiple: vibes.map(v => v.referenceStrength),
+        normalize_reference_strength_multiple: true,
       } : {}),
       controlnet_strength: 1,
       legacy: false,
@@ -615,24 +670,48 @@ export async function generateImageFromConfiguredApi(params: {
     if (description) positiveParts.push(description);
     const fullPrompt = positiveParts.join(", ");
 
-    // 读取已启用 Vibe 参考图（IndexedDB asset -> dataURL -> base64），最多取 4 张。
+    // Vibe 编码解析：有 encoded 直接用（缓存命中）；纯原图条目懒编码并回填缓存。
+    const normalizedNaiModel = normalizeNovelAiModel(activePreset.model);
     const vibeImages: { image: string; informationExtracted: number; referenceStrength: number }[] = [];
-    if (settings.novelai?.vibes?.length) {
-      const enabledVibes = settings.novelai.vibes.filter(v => v.enabled !== false).slice(0, 4);
-      const resolved = await Promise.all(enabledVibes.map(async v => {
-        try {
-          const dataUrl = await getChatImageFromIndexedDB(v.assetId);
-          if (!dataUrl) return null;
-          return {
-            image: dataUrl.replace(/^data:[^;]+;base64,/, ""),
-            informationExtracted: Math.max(0, Math.min(1, v.informationExtracted ?? 1)),
-            referenceStrength: Math.max(0, Math.min(1, v.referenceStrength ?? 0.6)),
-          };
-        } catch {
-          return null;
+    const enabledVibes = (settings.novelai?.vibes || []).filter(v => v.enabled !== false).slice(0, 4);
+    let vibesDirty = false;
+    const nextVibes = [...(settings.novelai?.vibes || [])];
+    for (const vibe of enabledVibes) {
+      const info = Math.max(0, Math.min(1, vibe.informationExtracted ?? 1));
+      const strength = Math.max(0, Math.min(1, vibe.referenceStrength ?? 0.6));
+      let encoded: string | null = null;
+      if (vibe.encoded && vibe.encodedModel === normalizedNaiModel && vibe.encodedInfo === info) {
+        encoded = vibe.encoded;
+      } else if (vibe.encoded && !vibe.encodedModel) {
+        // 导入的官方编码：直接复用（无缓存键，视为通用）
+        encoded = vibe.encoded;
+      } else if (vibe.assetId) {
+        const dataUrl = await getChatImageFromIndexedDB(vibe.assetId).catch(() => null);
+        if (dataUrl) {
+          const rawImage = dataUrl.replace(/^data:[^;]+;base64,/, "");
+          encoded = await encodeVibeImage({
+            apiKey: naiApiKey,
+            baseUrl: settings.novelai?.baseUrl || "",
+            image: rawImage,
+            informationExtracted: info,
+            model: normalizedNaiModel,
+            signal: params.signal,
+          });
+          const idx = nextVibes.findIndex(x => x.id === vibe.id);
+          if (idx >= 0) nextVibes[idx] = { ...nextVibes[idx], encoded, encodedModel: normalizedNaiModel, encodedInfo: info };
+          vibesDirty = true;
         }
-      }));
-      for (const item of resolved) if (item) vibeImages.push(item);
+      }
+      if (encoded) vibeImages.push({ image: encoded, informationExtracted: info, referenceStrength: strength });
+    }
+    if (vibesDirty && settings.novelai) {
+      // 编码结果回写持久化，下次生成免重编（缓存键 = 图片 + 信息提取强度 + 模型）
+      try {
+        saveImageGenerationSettings({ ...settings, novelai: { ...settings.novelai, vibes: nextVibes } });
+        settings.novelai.vibes = nextVibes;
+      } catch {
+        // 持久化失败不影响本次生成
+      }
     }
 
     const data = await generateNovelAiDirect({

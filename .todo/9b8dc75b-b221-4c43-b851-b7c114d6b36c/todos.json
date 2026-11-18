@@ -1,26 +1,32 @@
 [
   {
-    "id": "g1",
+    "id": "v1",
     "status": "completed",
-    "content": "图像生成API：删请求方式配置+模型拉取修复",
+    "content": "重写 vibe-import.ts（zip全量/naiv4vibe/json/PNG隐写）",
     "skills": []
   },
   {
-    "id": "g2",
+    "id": "v2",
     "status": "completed",
-    "content": "NovelAI 面板真拉取中转站模型",
+    "content": "类型/存储支持 encoded 纯编码条目",
     "skills": []
   },
   {
-    "id": "g3",
+    "id": "v3",
     "status": "completed",
-    "content": "新增 Vibe 导入功能（类型/存储/解析/UI/生图参数）",
+    "content": "生图注入编码+懒编码 encode-vibe+V3格式",
     "skills": []
   },
   {
-    "id": "g4",
+    "id": "v4",
     "status": "completed",
-    "content": "build+dev 双门禁验证",
+    "content": "UI：编码徽标/导出编码",
+    "skills": []
+  },
+  {
+    "id": "v5",
+    "status": "completed",
+    "content": "build+dev 验证并推送",
     "skills": []
   }
 ]

@@ -223,8 +223,13 @@ export type NovelAiPreset = {
 export type NovelAiVibeReference = {
     id: string;
     name: string;
-    /** 图片资产 ID（IndexedDB，chat-asset-storage）。 */
-    assetId: string;
+    /** 原图资产 ID（IndexedDB，chat-asset-storage）；纯编码条目为空。 */
+    assetId?: string;
+    /** 编码本体 base64（encode-vibe 结果 / .naiv4vibe 导入）。生成请求只认编码。 */
+    encoded?: string;
+    /** 编码缓存键：编码时用的模型与信息提取强度，不符则失效重编。 */
+    encodedModel?: string;
+    encodedInfo?: number;
     enabled: boolean;
     /** 画风参考强度（NAI reference_strength），0~1。 */
     referenceStrength: number;

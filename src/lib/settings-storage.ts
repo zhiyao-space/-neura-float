@@ -816,11 +816,14 @@ function normalizeImageGenerationSettings(settings: Partial<ImageGenerationSetti
 
     const rawNaiVibes = Array.isArray(rawNai?.vibes) ? rawNai.vibes : [];
     const naiVibes: import("./settings-types").NovelAiVibeReference[] = rawNaiVibes
-        .filter(v => v && typeof v === "object" && typeof v.assetId === "string" && v.assetId)
+        .filter(v => v && typeof v === "object" && ((typeof v.assetId === "string" && v.assetId) || (typeof v.encoded === "string" && v.encoded)))
         .map((v, idx) => ({
             id: typeof v.id === "string" && v.id.trim() ? v.id.trim() : `vibe_${Date.now()}_${idx}`,
             name: typeof v.name === "string" && v.name.trim() ? v.name.trim() : `Vibe ${idx + 1}`,
-            assetId: v.assetId,
+            ...(typeof v.assetId === "string" && v.assetId ? { assetId: v.assetId } : {}),
+            ...(typeof v.encoded === "string" && v.encoded ? { encoded: v.encoded } : {}),
+            ...(typeof v.encodedModel === "string" && v.encodedModel ? { encodedModel: v.encodedModel } : {}),
+            ...(typeof v.encodedInfo === "number" ? { encodedInfo: v.encodedInfo } : {}),
             enabled: v.enabled !== false,
             referenceStrength: typeof v.referenceStrength === "number"
                 ? Math.max(0, Math.min(1, v.referenceStrength))

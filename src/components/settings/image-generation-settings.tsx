@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { AlertCircle, Camera, ChevronDown, Image, Info, Plus, Power, RefreshCw, ScanFace, Sparkles, Trash2, Upload } from "lucide-react";
+import { Wand2,
+    Download,AlertCircle, Camera, ChevronDown, Image, Info, Plus, Power, RefreshCw, ScanFace, Sparkles, Trash2, Upload } from "lucide-react";
 import type { ImageGenerationSettings as ImageGenerationSettingsType, NovelAiPreset, NovelAiVibeReference, OpenAiImagePreset } from "@/lib/settings-types";
 import {
     DEFAULT_IMAGE_GENERATION_SETTINGS,
@@ -12,7 +13,7 @@ import {
 import { loadCharacters } from "@/lib/character-storage";
 import type { Character } from "@/lib/character-types";
 import { getChatImageFromIndexedDB, saveChatImageToIndexedDB } from "@/lib/chat-asset-storage";
-import { parseVibeFile } from "@/lib/vibe-import";
+import { parseVibeFiles, exportVibesArchive } from "@/lib/vibe-import";
 import {
     fetchImageGenerationModels,
     fetchNovelAiModels,
@@ -169,9 +170,9 @@ export function ImageGenerationSettings() {
     useEffect(() => {
         let cancelled = false;
         const vibes = settings.novelai?.vibes || [];
-        Promise.all(vibes.map(async vibe => {
-            const dataUrl = await getChatImageFromIndexedDB(vibe.assetId).catch(() => null);
-            return [vibe.assetId, dataUrl] as const;
+        Promise.all(vibes.filter(vibe => typeof vibe.assetId === "string").map(async vibe => {
+            const dataUrl = await getChatImageFromIndexedDB(vibe.assetId as string).catch(() => null);
+            return [vibe.assetId as string, dataUrl] as const;
         })).then(entries => {
             if (cancelled) return;
             const next: Record<string, string> = {};
@@ -379,30 +380,67 @@ export function ImageGenerationSettings() {
             const added: NovelAiVibeReference[] = [];
             for (const file of files) {
                 try {
-                    const parsed = await parseVibeFile(file);
-                    const assetId = await saveChatImageToIndexedDB(parsed.blob);
-                    added.push({
-                        id: `vibe_${Date.now()}_${added.length}`,
-                        name: parsed.name,
-                        assetId,
-                        enabled: true,
-                        referenceStrength: 0.6,
-                        informationExtracted: 1,
-                        addedAt: Date.now(),
-                    });
+                    const parsedList = await parseVibeFiles(file);
+                    for (const parsed of parsedList) {
+                        if (parsed.encoded) {
+                            // 纯编码条目：无原图，生成请求直接使用
+                            added.push({
+                                id: `vibe_${Date.now()}_${added.length}`,
+                                name: parsed.name,
+                                encoded: parsed.encoded,
+                                enabled: true,
+                                referenceStrength: 0.6,
+                                informationExtracted: parsed.informationExtracted ?? 1,
+                                addedAt: Date.now(),
+                            });
+                        } else if (parsed.blob) {
+                            const assetId = await saveChatImageToIndexedDB(parsed.blob);
+                            added.push({
+                                id: `vibe_${Date.now()}_${added.length}`,
+                                name: parsed.name,
+                                assetId,
+                                enabled: true,
+                                referenceStrength: 0.6,
+                                informationExtracted: parsed.informationExtracted ?? 1,
+                                addedAt: Date.now(),
+                            });
+                        }
+                    }
                 } catch (err) {
                     lastError = err instanceof Error ? err.message : String(err);
                 }
             }
             if (added.length > 0) {
                 updateNovelAi({ vibes: [...naiSettings.vibes, ...added].slice(0, 10) });
-                setStatus({ success: true, message: `已导入 ${added.length} 个 Vibe 参考图。` });
+                setStatus({ success: true, message: `已导入 ${added.length} 条 Vibe（编码条目导入即可用，零成本）。` });
             }
             if (lastError) setStatus({ success: false, message: lastError });
         } finally {
             setIsImportingVibes(false);
         }
     }, [naiSettings, updateNovelAi]);
+
+    const handleExportVibes = useCallback(async () => {
+        const exportable = naiSettings.vibes
+            .filter(v => typeof v.encoded === "string" && v.encoded)
+            .map(v => ({ name: v.name, encoded: v.encoded as string, informationExtracted: v.informationExtracted ?? 1 }));
+        if (exportable.length === 0) {
+            setStatus({ success: false, message: "没有可导出的 Vibe 编码（纯原图条目需先生成一次完成编码）。" });
+            return;
+        }
+        try {
+            const { blob, filename } = await exportVibesArchive(exportable);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+            setStatus({ success: true, message: `已导出 ${exportable.length} 条 Vibe 编码（${filename}）。` });
+        } catch (err) {
+            setStatus({ success: false, message: err instanceof Error ? err.message : String(err) });
+        }
+    }, [naiSettings]);
 
     const testGeneration = async () => {
         setStatus(null);
@@ -629,6 +667,14 @@ export function ImageGenerationSettings() {
                                     <Upload size={14} />
                                     {isImportingVibes ? "导入中..." : "导入 Vibe (PNG / 编码文件)"}
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void handleExportVibes()}
+                                    className="ui-btn ui-btn-soft-action min-h-11 !px-3 !py-2 text-xs flex items-center gap-1"
+                                >
+                                    <Download size={14} />
+                                    导出编码
+                                </button>
                                 <input
                                     ref={vibeFileInputRef}
                                     type="file"
@@ -647,10 +693,13 @@ export function ImageGenerationSettings() {
                                 <div className="flex flex-col gap-2">
                                     {naiSettings.vibes.map(vibe => (
                                         <div key={vibe.id} className="flex items-center gap-2 rounded-lg border border-[var(--c-card-border)] bg-[var(--c-card)] p-2">
-                                            {vibePreviews[vibe.assetId] ? (
+                                            {vibe.assetId && vibePreviews[vibe.assetId] ? (
                                                 <img src={vibePreviews[vibe.assetId]} alt={vibe.name} className="h-12 w-12 shrink-0 rounded-md object-cover" />
                                             ) : (
-                                                <div className="h-12 w-12 shrink-0 rounded-md bg-[var(--c-input)]" />
+                                                <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-[var(--c-input)] text-[10px] opacity-70">
+                                                    <Wand2 size={14} />
+                                                    编码
+                                                </div>
                                             )}
                                             <div className="flex min-w-0 flex-1 flex-col gap-1">
                                                 <span className="truncate text-xs font-medium">{vibe.name}</span>
