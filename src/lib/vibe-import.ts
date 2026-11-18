@@ -5,6 +5,14 @@ export type ParsedVibeFile = {
     blob: Blob;
 };
 
+// zip 内条目解析优先级：NAI vibe 编码文件 > 图片 > 其他
+function entryPriority(name: string): number {
+    if (/\.(naiv4vibe|naiv4image|naiv1style|style)$/i.test(name)) return 3;
+    if (/\.(png|jpe?g|webp|image)$/i.test(name)) return 2;
+    if (/\.(json|txt|zip)$/i.test(name)) return 1;
+    return 0;
+}
+
 function base64ToBlob(b64: string, mimeType = "image/png"): Blob {
     const binary = atob(b64);
     const bytes = new Uint8Array(binary.length);
@@ -49,14 +57,23 @@ export async function parseVibeFile(file: File): Promise<ParsedVibeFile> {
 
     if (isZip) {
         const zip = await JSZip.loadAsync(buffer);
-        const entry = Object.keys(zip.files)
+        const entries = Object.keys(zip.files)
             .map(name => ({ name, file: zip.files[name] }))
-            .find(item => !item.file.dir && /\.(png|jpe?g|webp|json|txt)$/i.test(item.name));
-        if (!entry) throw new Error(`${file.name}：压缩包内未找到可用的 vibe 文件。`);
-        const innerBuffer = await entry.file.async("arraybuffer");
-        const innerFile = new File([innerBuffer], entry.name.split("/").pop() || entry.name);
-        const parsed = await parseVibeFile(innerFile);
-        return { name: baseName, blob: parsed.blob };
+            .filter(item => !item.file.dir)
+            .sort((a, b) => entryPriority(b.name) - entryPriority(a.name));
+        const errors: string[] = [];
+        for (const entry of entries) {
+            if (!/\.(png|jpe?g|webp|json|txt|naiv4vibe|naiv4image|naiv1style|style|image|zip)$/i.test(entry.name)) continue;
+            try {
+                const innerBuffer = await entry.file.async("arraybuffer");
+                const innerFile = new File([innerBuffer], entry.name.split("/").pop() || entry.name);
+                const parsed = await parseVibeFile(innerFile);
+                return { name: baseName, blob: parsed.blob };
+            } catch (error) {
+                errors.push(error instanceof Error ? error.message : String(error));
+            }
+        }
+        throw new Error(`${file.name}：压缩包内未找到可用的 vibe 文件。${errors[0] ? `（${errors[0]}）` : ""}`);
     }
 
     const text = new TextDecoder().decode(uint8).trim();

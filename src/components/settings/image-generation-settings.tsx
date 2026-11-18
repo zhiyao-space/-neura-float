@@ -632,7 +632,7 @@ export function ImageGenerationSettings() {
                                 <input
                                     ref={vibeFileInputRef}
                                     type="file"
-                                    accept=".png,.jpg,.jpeg,.webp,image/*,.naiv4vibe,.naiv4image,.naiv1style,.style,.json,application/json"
+                                    accept=".png,.jpg,.jpeg,.webp,image/*,.naiv4vibe,.naiv4image,.naiv1style,.style,.image,.json,.zip,application/json"
                                     multiple
                                     className="hidden"
                                     onChange={(event) => {
