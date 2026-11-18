@@ -7,6 +7,7 @@ import { storeMediaBlob } from "./media-cache-storage";
 import { throwIfAborted } from "./abort-utils";
 import {
   NOVELAI_COMMON_MODELS,
+  NOVELAI_DEFAULT_BASE_URL,
   getNovelAiResolution,
   normalizeNovelAiModel,
   normalizeNovelAiNoiseSchedule,
@@ -49,6 +50,9 @@ const IMAGE_MODEL_HINTS = [
   "qwen-image",
   "kolors",
   "wan",
+  "novel",
+  "nai",
+  "anime",
 ];
 
 function mergePrompt(description: string, extraPrompt: string): string {
@@ -295,39 +299,23 @@ export function filterLikelyImageModels(models: string[]): string[] {
   return filtered.length > 0 ? filtered : models;
 }
 
-export async function fetchImageGenerationModels(settings: Pick<ImageGenerationSettings, "apiKey" | "baseUrl" | "requestMode">): Promise<string[]> {
-  if (settings.requestMode === "direct") {
-    try {
-      const res = await fetch(buildModelsUrl(settings.baseUrl), {
-        method: "GET",
-        headers: { Authorization: `Bearer ${settings.apiKey}` },
-      });
-      const text = await res.text();
-      if (!res.ok) {
-        throw new Error(`模型列表 API 错误 ${res.status}: ${text.slice(0, 400)}`);
-      }
-      return extractModels(JSON.parse(text));
-    } catch (error) {
-      if (error instanceof TypeError) {
-        throw new Error("浏览器直连失败：该 API 可能未允许跨域请求。");
-      }
-      throw error;
+export async function fetchImageGenerationModels(settings: Pick<ImageGenerationSettings, "apiKey" | "baseUrl">): Promise<string[]> {
+  try {
+    const res = await fetch(buildModelsUrl(settings.baseUrl), {
+      method: "GET",
+      headers: { Authorization: `Bearer ${settings.apiKey}` },
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`模型列表 API 错误 ${res.status}: ${text.slice(0, 400)}`);
     }
+    return extractModels(JSON.parse(text));
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error("浏览器直连失败：该 API 可能未允许跨域请求。");
+    }
+    throw error;
   }
-
-  const res = await fetch("/api/image-generation/models", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      apiKey: settings.apiKey,
-      baseUrl: settings.baseUrl,
-    }),
-  });
-  const data = await res.json().catch(() => ({})) as { models?: string[]; error?: string };
-  if (!res.ok || data.error) {
-    throw new Error(data.error || `模型列表请求失败 ${res.status}`);
-  }
-  return Array.isArray(data.models) ? data.models : [];
 }
 
 // 通用生图代理(Cloudflare Worker)。配置后,「服务端中转」模式改为:
@@ -402,8 +390,8 @@ async function generateImageDirect(params: {
 // 选了「服务端转发」的用户,其生图 API 其实允许跨域。因此走 Netlify 前先试一次
 // 浏览器直连:直连因 CORS 失败(预检被拒,真实请求未发出,上游不会计费)才回落
 // 到服务端,并按 baseUrl 记住失败结果,本次会话内不再重复探测。
-const directCorsFailedBaseUrls = new Set<string>();
-
+// 「代理中转」模式:配置了通用代理(CF Worker)就只走它；未配置时浏览器直连。
+// 原「服务端转发」(/api/image-generation) 分支已移除——本项目无服务端运行时,统一浏览器直连。
 async function generateImageViaServerOrProxy(params: {
   settings: ImageGenerationSettings;
   prompt: string;
@@ -421,122 +409,26 @@ async function generateImageViaServerOrProxy(params: {
       throw error;
     }
   }
-  const baseUrlKey = normalizeBaseUrl(params.settings.baseUrl);
-  if (!directCorsFailedBaseUrls.has(baseUrlKey)) {
-    try {
-      return await generateImageDirect(params);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      // 只有连接层失败(CORS/断网)才回落;API 自身的错误(密钥无效、余额不足等)
-      // 说明直连是通的,换服务端转发也会得到同样错误,直接抛出避免重复计费。
-      if (!message.includes("浏览器直连失败")) throw error;
-      throwIfAborted(params.signal);
-      directCorsFailedBaseUrls.add(baseUrlKey);
-    }
-  }
-  return generateImageViaServer(params);
-}
-
-async function generateImageViaServer(params: {
-  settings: ImageGenerationSettings;
-  prompt: string;
-  referenceImageDataUrl: string | null;
-  signal?: AbortSignal;
-}): Promise<ImageGenerationApiResponse> {
-  const { settings, prompt, referenceImageDataUrl, signal } = params;
-  throwIfAborted(signal);
-  // 防"无限卡住":函数被平台中途击杀时流可能既不关闭也不报错。
-  // 总超时 180s + 断流检测(心跳每 3s 一个字节,超过 25s 没有任何字节视为断流)。
-  const controller = new AbortController();
-  const onOuterAbort = () => controller.abort();
-  if (signal) signal.addEventListener("abort", onOuterAbort, { once: true });
-  const totalTimer = setTimeout(() => controller.abort(), 180_000);
-  try {
-    // x-stream-heartbeat:服务端以心跳流响应,真正的结果附在流末尾的 @@RESULT@@ 标记后。
-    // 避免托管平台对缓冲响应的 10~26s 超时把慢生图(30~120s)掐成 504。
-    const res = await fetch("/api/image-generation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-stream-heartbeat": "1" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        apiKey: settings.apiKey,
-        baseUrl: settings.baseUrl,
-        model: settings.model,
-        prompt,
-        size: settings.size,
-        quality: settings.quality,
-        referenceImageDataUrl: referenceImageDataUrl || undefined,
-      }),
-    });
-    throwIfAborted(signal);
-
-    type ServerImagePayload = { httpStatus?: number; b64?: string; mimeType?: string; revisedPrompt?: string; error?: string };
-    const contentType = (res.headers.get("content-type") || "").toLowerCase();
-    let data: ServerImagePayload;
-    if (contentType.includes("text/plain")) {
-      let text = "";
-      if (res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let idleTimer: ReturnType<typeof setTimeout> | undefined;
-        try {
-          for (;;) {
-            idleTimer = setTimeout(() => controller.abort(), 25_000);
-            const { done, value } = await reader.read();
-            clearTimeout(idleTimer);
-            if (done) break;
-            text += decoder.decode(value, { stream: true });
-          }
-          text += decoder.decode();
-        } catch (err) {
-          clearTimeout(idleTimer);
-          if (controller.signal.aborted && !signal?.aborted) {
-            throw new Error("生图请求失败（服务器连接中断,超过 25 秒没有响应）");
-          }
-          throw err;
-        }
-      } else {
-        text = await res.text();
-      }
-      const marker = "@@RESULT@@";
-      const idx = text.lastIndexOf(marker);
-      if (idx < 0) throw new Error(`生图请求失败 ${res.status}（流式响应中断,未收到结果）`);
-      try {
-        data = JSON.parse(text.slice(idx + marker.length)) as ServerImagePayload;
-      } catch {
-        throw new Error("生图请求失败（流式结果解析出错）");
-      }
-      throwIfAborted(signal);
-      if (data.error || !data.b64) {
-        throw new Error(data.error || `生图请求失败 ${data.httpStatus ?? res.status}`);
-      }
-    } else {
-      // 非流式回退(旧服务端等)
-      data = await res.json().catch(() => ({})) as ServerImagePayload;
-      throwIfAborted(signal);
-      if (!res.ok || data.error || !data.b64) {
-        throw new Error(data.error || `生图请求失败 ${res.status}`);
-      }
-    }
-    return { b64: data.b64, mimeType: data.mimeType, revisedPrompt: data.revisedPrompt };
-  } finally {
-    clearTimeout(totalTimer);
-    if (signal) signal.removeEventListener("abort", onOuterAbort);
-  }
+  return generateImageDirect(params);
 }
 
 async function generateNovelAiDirect(params: {
   apiKey: string;
+  baseUrl: string;
   preset: NovelAiPreset;
   prompt: string;
+  /** 已启用的 Vibe 参考图（base64，不含 data: 前缀）。 */
+  vibeImages?: { image: string; informationExtracted: number; referenceStrength: number }[];
   signal?: AbortSignal;
 }): Promise<ImageGenerationApiResponse> {
   const { apiKey, preset, prompt, signal } = params;
   throwIfAborted(signal);
 
   const { width, height } = getNovelAiResolution(preset.resolution);
+  const vibes = (params.vibeImages || []).slice(0, 4);
 
-  const url = "https://image.novelai.net/ai/generate-image";
+  // NovelAI 原生格式（官方 image.novelai.net 与兼容中转站通用）。
+  const url = `${normalizeBaseUrl(params.baseUrl || NOVELAI_DEFAULT_BASE_URL)}/ai/generate-image`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
@@ -558,6 +450,11 @@ async function generateNovelAiDirect(params: {
       sm: preset.smea === true,
       sm_dyn: preset.smeaDyn === true,
       dynamic_thresholding: false,
+      ...(vibes.length > 0 ? {
+        reference_image_multiple: vibes.map(v => v.image),
+        reference_information_extracted_multiple: vibes.map(v => v.informationExtracted),
+        reference_strength_multiple: vibes.map(v => v.referenceStrength),
+      } : {}),
       controlnet_strength: 1,
       legacy: false,
       add_original_image: false,
@@ -604,7 +501,7 @@ async function generateNovelAiDirect(params: {
       throw new Error("NovelAI 直连请求超时（180 秒未返回）");
     }
     if (error instanceof TypeError) {
-      throw new Error("NovelAI 浏览器直连失败：可能受到浏览器跨域 (CORS) 限制，请在生图设置中将请求方式切换为「服务端转发」。");
+      throw new Error("NovelAI 直连失败：接口可能未允许浏览器跨域 (CORS) 请求。");
     }
     throw error;
   } finally {
@@ -613,128 +510,62 @@ async function generateNovelAiDirect(params: {
   }
 }
 
-async function generateNovelAiViaServer(params: {
-  apiKey: string;
-  preset: NovelAiPreset;
-  prompt: string;
-  signal?: AbortSignal;
-}): Promise<ImageGenerationApiResponse> {
-  const { apiKey, preset, prompt, signal } = params;
-  throwIfAborted(signal);
-
-  const controller = new AbortController();
-  const onOuterAbort = () => controller.abort();
-  if (signal) signal.addEventListener("abort", onOuterAbort, { once: true });
-  const totalTimer = setTimeout(() => controller.abort(), 180_000);
-
-  try {
-    const resolution = getNovelAiResolution(preset.resolution);
-    const res = await fetch("/api/image-generation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-stream-heartbeat": "1" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        provider: "novelai",
-        apiKey,
-        model: normalizeNovelAiModel(preset.model),
-        prompt,
-        size: resolution.value,
-        negativePrompt: preset.negativePrompt || "",
-        steps: normalizeNovelAiSteps(preset.steps),
-        scale: normalizeNovelAiScale(preset.scale),
-        sampler: normalizeNovelAiSampler(preset.sampler),
-        noiseSchedule: normalizeNovelAiNoiseSchedule(preset.noiseSchedule),
-        qualityToggle: preset.qualityToggle,
-        smea: preset.smea,
-        smeaDyn: preset.smeaDyn,
-      }),
-    });
-    throwIfAborted(signal);
-
-    type ServerImagePayload = { httpStatus?: number; b64?: string; mimeType?: string; revisedPrompt?: string; error?: string };
-    const contentType = (res.headers.get("content-type") || "").toLowerCase();
-    let data: ServerImagePayload;
-
-    if (contentType.includes("text/plain")) {
-      let text = "";
-      if (res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let idleTimer: ReturnType<typeof setTimeout> | undefined;
-        try {
-          for (;;) {
-            idleTimer = setTimeout(() => controller.abort(), 25_000);
-            const { done, value } = await reader.read();
-            clearTimeout(idleTimer);
-            if (done) break;
-            text += decoder.decode(value, { stream: true });
-          }
-          text += decoder.decode();
-        } catch (err) {
-          clearTimeout(idleTimer);
-          if (controller.signal.aborted && !signal?.aborted) {
-            throw new Error("NovelAI 请求失败（服务器连接中断，超过 25 秒没有响应）");
-          }
-          throw err;
-        }
-      } else {
-        text = await res.text();
-      }
-      const marker = "@@RESULT@@";
-      const idx = text.lastIndexOf(marker);
-      if (idx < 0) throw new Error(`NovelAI 请求失败 ${res.status}（流式响应中断，未收到结果）`);
-      try {
-        data = JSON.parse(text.slice(idx + marker.length)) as ServerImagePayload;
-      } catch {
-        throw new Error("NovelAI 请求失败（流式结果解析出错）");
-      }
-      throwIfAborted(signal);
-      if (data.error || !data.b64) {
-        throw new Error(data.error || `NovelAI 请求失败 ${data.httpStatus ?? res.status}`);
-      }
-    } else {
-      data = await res.json().catch(() => ({})) as ServerImagePayload;
-      throwIfAborted(signal);
-      if (!res.ok || data.error || !data.b64) {
-        throw new Error(data.error || `NovelAI 请求失败 ${res.status}`);
-      }
-    }
-    return { b64: data.b64, mimeType: data.mimeType, revisedPrompt: data.revisedPrompt };
-  } finally {
-    clearTimeout(totalTimer);
-    if (signal) signal.removeEventListener("abort", onOuterAbort);
-  }
-}
-
-export async function fetchNovelAiModels(apiKey: string): Promise<string[]> {
+export async function fetchNovelAiModels(apiKey: string, baseUrl?: string): Promise<string[]> {
   const token = apiKey.trim();
   if (!token) throw new Error("请先填写 NovelAI API Token。");
+  const base = (baseUrl || NOVELAI_DEFAULT_BASE_URL).trim();
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    const res = await fetch("https://image.novelai.net/user/data", {
+    // 官方通道：验证 Token 并返回内置常用模型列表。
+    if (!base || /image\.novelai\.net/i.test(base)) {
+      const res = await fetch("https://image.novelai.net/user/data", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("NovelAI API Token 无效或已失效，请重新获取后再试。");
+        }
+        throw new Error(`NovelAI Token 验证失败 ${res.status}${detail ? `: ${detail.slice(0, 160)}` : ""}`);
+      }
+      return [...NOVELAI_COMMON_MODELS];
+    }
+
+    // 中转站：拉取 /models 模型列表，优先展示 Novel 类模型。
+    const res = await fetch(`${normalizeBaseUrl(base)}/models`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal,
     });
+    const text = await res.text();
     if (!res.ok) {
-      const detail = await res.text().catch(() => "");
       if (res.status === 401 || res.status === 403) {
-        throw new Error("NovelAI API Token 无效或已失效，请重新获取后再试。");
+        throw new Error("API Key 无效或已失效，请重新填写后再试。");
       }
-      throw new Error(`NovelAI Token 验证失败 ${res.status}${detail ? `: ${detail.slice(0, 160)}` : ""}`);
+      throw new Error(`模型列表请求失败 ${res.status}: ${text.slice(0, 200)}`);
     }
-    return [...NOVELAI_COMMON_MODELS];
+    const models = extractModels(JSON.parse(text));
+    if (models.length === 0) return [...NOVELAI_COMMON_MODELS];
+    const novelModels = models.filter(m => /novel|nai|diffusion|v[345]/i.test(m));
+    return novelModels.length > 0
+      ? Array.from(new Set([...novelModels, ...NOVELAI_COMMON_MODELS]))
+      : models;
   } catch (error) {
     if (controller.signal.aborted) {
-      throw new Error("NovelAI Token 验证超时，请检查网络后重试。");
+      throw new Error("请求超时，请检查网络或接口地址后重试。");
     }
     if (error instanceof TypeError) {
-      throw new Error("无法连接 NovelAI，请检查网络后重试。");
+      throw new Error("浏览器直连失败：该接口可能未允许跨域请求。");
+    }
+    if (error instanceof SyntaxError) {
+      throw new Error("模型列表响应解析失败：该接口可能不是 OpenAI 兼容 /models 格式。");
     }
     if (error instanceof Error) throw error;
-    throw new Error("NovelAI Token 验证失败，请检查网络后重试。");
+    throw new Error("验证失败，请检查网络后重试。");
   } finally {
     clearTimeout(timeout);
   }
@@ -784,10 +615,34 @@ export async function generateImageFromConfiguredApi(params: {
     if (description) positiveParts.push(description);
     const fullPrompt = positiveParts.join(", ");
 
-    const novelAiRequestMode = settings.novelai?.requestMode || settings.requestMode;
-    const data = novelAiRequestMode === "direct"
-      ? await generateNovelAiDirect({ apiKey: naiApiKey, preset: activePreset, prompt: fullPrompt, signal: params.signal })
-      : await generateNovelAiViaServer({ apiKey: naiApiKey, preset: activePreset, prompt: fullPrompt, signal: params.signal });
+    // 读取已启用 Vibe 参考图（IndexedDB asset -> dataURL -> base64），最多取 4 张。
+    const vibeImages: { image: string; informationExtracted: number; referenceStrength: number }[] = [];
+    if (settings.novelai?.vibes?.length) {
+      const enabledVibes = settings.novelai.vibes.filter(v => v.enabled !== false).slice(0, 4);
+      const resolved = await Promise.all(enabledVibes.map(async v => {
+        try {
+          const dataUrl = await getChatImageFromIndexedDB(v.assetId);
+          if (!dataUrl) return null;
+          return {
+            image: dataUrl.replace(/^data:[^;]+;base64,/, ""),
+            informationExtracted: Math.max(0, Math.min(1, v.informationExtracted ?? 1)),
+            referenceStrength: Math.max(0, Math.min(1, v.referenceStrength ?? 0.6)),
+          };
+        } catch {
+          return null;
+        }
+      }));
+      for (const item of resolved) if (item) vibeImages.push(item);
+    }
+
+    const data = await generateNovelAiDirect({
+      apiKey: naiApiKey,
+      baseUrl: settings.novelai?.baseUrl || "",
+      preset: activePreset,
+      prompt: fullPrompt,
+      vibeImages,
+      signal: params.signal,
+    });
 
     throwIfAborted(params.signal);
     const mimeType = data.mimeType || "image/png";
@@ -833,9 +688,7 @@ export async function generateImageFromConfiguredApi(params: {
     openaiSettings.extraPrompt,
   );
 
-  const data = openaiSettings.requestMode === "direct"
-    ? await generateImageDirect({ settings: openaiSettings, prompt, referenceImageDataUrl, signal: params.signal })
-    : await generateImageViaServerOrProxy({ settings: openaiSettings, prompt, referenceImageDataUrl, signal: params.signal });
+  const data = await generateImageViaServerOrProxy({ settings: openaiSettings, prompt, referenceImageDataUrl, signal: params.signal });
 
   throwIfAborted(params.signal);
   const mimeType = data.mimeType || "image/png";

@@ -24,6 +24,7 @@ import {
     NOVELAI_DEFAULT_SAMPLER,
     NOVELAI_DEFAULT_SCALE,
     NOVELAI_DEFAULT_STEPS,
+    NOVELAI_DEFAULT_BASE_URL,
     normalizeNovelAiModel,
     normalizeNovelAiNoiseSchedule,
     normalizeNovelAiResolution,
@@ -697,8 +698,10 @@ export const DEFAULT_IMAGE_GENERATION_SETTINGS: ImageGenerationSettings = {
     novelai: {
         apiKey: "",
         requestMode: "direct",
+        baseUrl: NOVELAI_DEFAULT_BASE_URL,
         activePresetId: DEFAULT_NOVELAI_PRESET.id,
         presets: [DEFAULT_NOVELAI_PRESET],
+        vibes: [],
     },
     characterReferences: {},
     imageHosting: {
@@ -811,13 +814,35 @@ function normalizeImageGenerationSettings(settings: Partial<ImageGenerationSetti
         activePresetId = naiPresets[0].id;
     }
 
+    const rawNaiVibes = Array.isArray(rawNai?.vibes) ? rawNai.vibes : [];
+    const naiVibes: import("./settings-types").NovelAiVibeReference[] = rawNaiVibes
+        .filter(v => v && typeof v === "object" && typeof v.assetId === "string" && v.assetId)
+        .map((v, idx) => ({
+            id: typeof v.id === "string" && v.id.trim() ? v.id.trim() : `vibe_${Date.now()}_${idx}`,
+            name: typeof v.name === "string" && v.name.trim() ? v.name.trim() : `Vibe ${idx + 1}`,
+            assetId: v.assetId,
+            enabled: v.enabled !== false,
+            referenceStrength: typeof v.referenceStrength === "number"
+                ? Math.max(0, Math.min(1, v.referenceStrength))
+                : 0.6,
+            informationExtracted: typeof v.informationExtracted === "number"
+                ? Math.max(0, Math.min(1, v.informationExtracted))
+                : 1,
+            addedAt: typeof v.addedAt === "number" ? v.addedAt : Date.now(),
+        }))
+        .slice(0, 10);
+
     const novelai: import("./settings-types").NovelAiSettings = {
         apiKey: typeof rawNai?.apiKey === "string" ? rawNai.apiKey : "",
         requestMode: rawNai?.requestMode === "server" || rawNai?.requestMode === "direct"
             ? rawNai.requestMode
             : requestMode,
+        baseUrl: typeof rawNai?.baseUrl === "string" && rawNai.baseUrl.trim()
+            ? rawNai.baseUrl.trim()
+            : NOVELAI_DEFAULT_BASE_URL,
         activePresetId,
         presets: naiPresets,
+        vibes: naiVibes,
     };
 
     return {

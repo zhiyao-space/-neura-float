@@ -220,11 +220,28 @@ export type NovelAiPreset = {
     smeaDyn?: boolean;
 };
 
+export type NovelAiVibeReference = {
+    id: string;
+    name: string;
+    /** 图片资产 ID（IndexedDB，chat-asset-storage）。 */
+    assetId: string;
+    enabled: boolean;
+    /** 画风参考强度（NAI reference_strength），0~1。 */
+    referenceStrength: number;
+    /** 信息提取度（NAI information_extracted），0~1。 */
+    informationExtracted: number;
+    addedAt: number;
+};
+
 export type NovelAiSettings = {
     apiKey: string;
     requestMode?: ImageGenerationRequestMode;
+    /** NovelAI 原生接口地址（官方 https://image.novelai.net 或中转站）。 */
+    baseUrl: string;
     activePresetId: string;
     presets: NovelAiPreset[];
+    /** 已导入的 Vibe 画风参考（PNG / 编码文件）。 */
+    vibes: NovelAiVibeReference[];
 };
 
 export type ImageGenerationSettings = {

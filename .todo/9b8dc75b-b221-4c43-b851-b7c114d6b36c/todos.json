@@ -1,27 +1,26 @@
 [
   {
-    "id": "m1",
+    "id": "g1",
     "status": "completed",
-    "content": "朋友圈动态：转发功能"
+    "content": "图像生成API：删请求方式配置+模型拉取修复",
+    "skills": []
   },
   {
-    "id": "m2",
+    "id": "g2",
     "status": "completed",
-    "content": "聊天页：支持上传任意文件和图片"
+    "content": "NovelAI 面板真拉取中转站模型",
+    "skills": []
   },
   {
-    "id": "m3",
+    "id": "g3",
     "status": "completed",
-    "content": "角色关联：关联角色出现在列表并自动互动"
+    "content": "新增 Vibe 导入功能（类型/存储/解析/UI/生图参数）",
+    "skills": []
   },
   {
-    "id": "m4",
+    "id": "g4",
     "status": "completed",
-    "content": "资源集市：导入后不跳回+批量勾选导入"
-  },
-  {
-    "id": "m5",
-    "status": "completed",
-    "content": "build+dev 双门禁验证"
+    "content": "build+dev 双门禁验证",
+    "skills": []
   }
 ]

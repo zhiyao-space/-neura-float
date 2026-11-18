@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { AlertCircle, Camera, ChevronDown, Image, Info, Plus, Power, RefreshCw, ScanFace, Sparkles, Trash2, Upload } from "lucide-react";
-import type { ImageGenerationSettings as ImageGenerationSettingsType, NovelAiPreset, OpenAiImagePreset } from "@/lib/settings-types";
+import type { ImageGenerationSettings as ImageGenerationSettingsType, NovelAiPreset, NovelAiVibeReference, OpenAiImagePreset } from "@/lib/settings-types";
 import {
     DEFAULT_IMAGE_GENERATION_SETTINGS,
     DEFAULT_NOVELAI_PRESET,
@@ -12,6 +12,7 @@ import {
 import { loadCharacters } from "@/lib/character-storage";
 import type { Character } from "@/lib/character-types";
 import { getChatImageFromIndexedDB, saveChatImageToIndexedDB } from "@/lib/chat-asset-storage";
+import { parseVibeFile } from "@/lib/vibe-import";
 import {
     fetchImageGenerationModels,
     fetchNovelAiModels,
@@ -85,6 +86,9 @@ export function ImageGenerationSettings() {
     const [models, setModels] = useState<string[]>([]);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [naiModels, setNaiModels] = useState<string[]>(NOVELAI_COMMON_MODELS);
+    const [vibePreviews, setVibePreviews] = useState<Record<string, string>>({});
+    const [isImportingVibes, setIsImportingVibes] = useState(false);
+    const vibeFileInputRef = useRef<HTMLInputElement | null>(null);
     const [isFetchingNaiModels, setIsFetchingNaiModels] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [status, setStatus] = useState<Status | null>(null);
@@ -163,6 +167,23 @@ export function ImageGenerationSettings() {
     }, [settings.characterReferences]);
 
     useEffect(() => {
+        let cancelled = false;
+        const vibes = settings.novelai?.vibes || [];
+        Promise.all(vibes.map(async vibe => {
+            const dataUrl = await getChatImageFromIndexedDB(vibe.assetId).catch(() => null);
+            return [vibe.assetId, dataUrl] as const;
+        })).then(entries => {
+            if (cancelled) return;
+            const next: Record<string, string> = {};
+            for (const [assetId, dataUrl] of entries) {
+                if (dataUrl) next[assetId] = dataUrl;
+            }
+            setVibePreviews(next);
+        });
+        return () => { cancelled = true; };
+    }, [settings.novelai?.vibes]);
+
+    useEffect(() => {
         return () => {
             if (testPreviewUrl) URL.revokeObjectURL(testPreviewUrl);
         };
@@ -229,9 +250,11 @@ export function ImageGenerationSettings() {
         return {
             apiKey: nai?.apiKey || "",
             requestMode: nai?.requestMode || settings.requestMode,
+            baseUrl: nai?.baseUrl || "https://image.novelai.net",
             activePresetId: activePreset.id,
             presets,
             activePreset,
+            vibes: nai?.vibes || [],
         };
     }, [settings.novelai, settings.requestMode]);
 
@@ -241,8 +264,10 @@ export function ImageGenerationSettings() {
             novelai: {
                 apiKey: naiSettings.apiKey,
                 requestMode: naiSettings.requestMode,
+                baseUrl: naiSettings.baseUrl,
                 activePresetId: naiSettings.activePresetId,
                 presets: naiSettings.presets,
+                vibes: naiSettings.vibes,
                 ...patch,
             },
         });
@@ -303,7 +328,7 @@ export function ImageGenerationSettings() {
         }
         setIsFetchingModels(true);
         try {
-            const fetched = await fetchImageGenerationModels(activeOpenAiPreset);
+            const fetched = await fetchImageGenerationModels({ apiKey: activeOpenAiPreset.apiKey, baseUrl: activeOpenAiPreset.baseUrl });
             setModels(fetched);
             setStatus({
                 success: true,
@@ -320,16 +345,16 @@ export function ImageGenerationSettings() {
     const fetchNaiModels = async () => {
         setNaiTokenStatus(null);
         if (!naiSettings.apiKey.trim()) {
-            setNaiTokenStatus({ success: false, message: "请先填写 NovelAI API Token。" });
+            setNaiTokenStatus({ success: false, message: "请先填写 NovelAI API Token / API Key。" });
             return;
         }
         setIsFetchingNaiModels(true);
         try {
-            const fetched = await fetchNovelAiModels(naiSettings.apiKey);
+            const fetched = await fetchNovelAiModels(naiSettings.apiKey, naiSettings.baseUrl);
             setNaiModels(fetched);
             setNaiTokenStatus({
                 success: true,
-                message: `NovelAI Token 有效，已加载 ${fetched.length} 个常用模型。`,
+                message: `验证成功，已加载 ${fetched.length} 个模型。`,
             });
         } catch (err) {
             setNaiTokenStatus({ success: false, message: err instanceof Error ? err.message : String(err) });
@@ -337,6 +362,47 @@ export function ImageGenerationSettings() {
             setIsFetchingNaiModels(false);
         }
     };
+
+    const updateVibe = useCallback((vibeId: string, patch: Partial<NovelAiVibeReference>) => {
+        updateNovelAi({ vibes: naiSettings.vibes.map(v => v.id === vibeId ? { ...v, ...patch } : v) });
+    }, [naiSettings, updateNovelAi]);
+
+    const deleteVibe = useCallback((vibeId: string) => {
+        updateNovelAi({ vibes: naiSettings.vibes.filter(v => v.id !== vibeId) });
+    }, [naiSettings, updateNovelAi]);
+
+    const handleImportVibes = useCallback(async (files: File[]) => {
+        if (files.length === 0) return;
+        setIsImportingVibes(true);
+        let lastError: string | null = null;
+        try {
+            const added: NovelAiVibeReference[] = [];
+            for (const file of files) {
+                try {
+                    const parsed = await parseVibeFile(file);
+                    const assetId = await saveChatImageToIndexedDB(parsed.blob);
+                    added.push({
+                        id: `vibe_${Date.now()}_${added.length}`,
+                        name: parsed.name,
+                        assetId,
+                        enabled: true,
+                        referenceStrength: 0.6,
+                        informationExtracted: 1,
+                        addedAt: Date.now(),
+                    });
+                } catch (err) {
+                    lastError = err instanceof Error ? err.message : String(err);
+                }
+            }
+            if (added.length > 0) {
+                updateNovelAi({ vibes: [...naiSettings.vibes, ...added].slice(0, 10) });
+                setStatus({ success: true, message: `已导入 ${added.length} 个 Vibe 参考图。` });
+            }
+            if (lastError) setStatus({ success: false, message: lastError });
+        } finally {
+            setIsImportingVibes(false);
+        }
+    }, [naiSettings, updateNovelAi]);
 
     const testGeneration = async () => {
         setStatus(null);
@@ -510,24 +576,9 @@ export function ImageGenerationSettings() {
                         })}
                     >
                         <option value="openai">OpenAI 兼容 (通用模型 / DALL-E / Flux / SD 中转等)</option>
-                        <option value="novelai">NovelAI 原生接口 (官方 API)</option>
+                        <option value="novelai">NovelAI 原生格式 (官方 / 中转站)</option>
                     </Select>
                 </div>
-
-                {settings.provider === "novelai" && (
-                    <div className="flex flex-col gap-1">
-                        <label className="menu-desc ml-1">请求方式</label>
-                        <Select
-                            value={naiSettings.requestMode}
-                            onChange={(event) => updateNovelAi({
-                                requestMode: event.target.value as ImageGenerationSettingsType["requestMode"],
-                            })}
-                        >
-                            <option value="server">服务端转发（推荐，可避免跨域报错）</option>
-                            <option value="direct">浏览器直连（需接口允许 CORS 跨域）</option>
-                        </Select>
-                    </div>
-                )}
 
                 {settings.provider === "novelai" ? (
                     /* --- NovelAI 配置面板 --- */
@@ -543,13 +594,99 @@ export function ImageGenerationSettings() {
                                 }}
                                 placeholder="pst-..."
                             />
-                            <span className="menu-desc ml-1">可在 NovelAI 官网 Account 页面获取 Persistent API Token。</span>
+                            <span className="menu-desc ml-1">官方通道填 Persistent API Token（pst-...）；中转站填中转站 API Key。</span>
                             {naiTokenStatus && (
                                 <div role={naiTokenStatus.success ? "status" : "alert"} className="mt-2">
                                     <Alert variant={naiTokenStatus.success ? "success" : "danger"}>
                                         <AlertCircle size={16} className="mt-[2px] shrink-0" />
                                         <span className="break-all leading-[1.5]">{naiTokenStatus.message}</span>
                                     </Alert>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label className="menu-desc ml-1">接口地址 (Base URL)</label>
+                            <Input
+                                type="url"
+                                value={naiSettings.baseUrl}
+                                onChange={(event) => updateNovelAi({ baseUrl: event.target.value })}
+                                placeholder="https://image.novelai.net（官方）或中转站地址"
+                            />
+                            <span className="menu-desc ml-1 opacity-70">填中转站地址后，模型拉取走中转站 /models，可直接选到 Novel 模型；生图按 NovelAI 原生格式提交。</span>
+                        </div>
+
+                        {/* Vibe 画风参考 */}
+                        <div className="flex flex-col gap-2 rounded-xl bg-[var(--c-input)]/40 p-3 border border-[var(--c-card-border)]">
+                            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <label className="menu-label text-sm font-semibold">Vibe 画风参考</label>
+                                <button
+                                    type="button"
+                                    onClick={() => vibeFileInputRef.current?.click()}
+                                    disabled={isImportingVibes}
+                                    className="ui-btn ui-btn-soft-action min-h-11 !px-3 !py-2 text-xs flex items-center gap-1"
+                                >
+                                    <Upload size={14} />
+                                    {isImportingVibes ? "导入中..." : "导入 Vibe (PNG / 编码文件)"}
+                                </button>
+                                <input
+                                    ref={vibeFileInputRef}
+                                    type="file"
+                                    accept=".png,.jpg,.jpeg,.webp,image/*,.naiv4vibe,.naiv4image,.naiv1style,.style,.json,application/json"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(event) => {
+                                        const files = Array.from(event.target.files || []);
+                                        event.target.value = "";
+                                        void handleImportVibes(files);
+                                    }}
+                                />
+                            </div>
+                            <span className="menu-desc ml-1">导入后默认启用，所有 NovelAI 生图（含角色生图）自动作为画风参考。支持 PNG 图片和 .naiv4vibe / .naiv4image / .style 等编码文件。</span>
+                            {naiSettings.vibes.length > 0 && (
+                                <div className="flex flex-col gap-2">
+                                    {naiSettings.vibes.map(vibe => (
+                                        <div key={vibe.id} className="flex items-center gap-2 rounded-lg border border-[var(--c-card-border)] bg-[var(--c-card)] p-2">
+                                            {vibePreviews[vibe.assetId] ? (
+                                                <img src={vibePreviews[vibe.assetId]} alt={vibe.name} className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                                            ) : (
+                                                <div className="h-12 w-12 shrink-0 rounded-md bg-[var(--c-input)]" />
+                                            )}
+                                            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                                <span className="truncate text-xs font-medium">{vibe.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="menu-desc shrink-0">强度</span>
+                                                    <input
+                                                        type="range"
+                                                        min={0}
+                                                        max={1}
+                                                        step={0.05}
+                                                        value={vibe.referenceStrength}
+                                                        onChange={(event) => updateVibe(vibe.id, { referenceStrength: Number(event.target.value) })}
+                                                        className="flex-1"
+                                                    />
+                                                    <span className="menu-desc">{Math.round(vibe.referenceStrength * 100)}%</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex shrink-0 flex-col gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateVibe(vibe.id, { enabled: vibe.enabled === false })}
+                                                    className={`ui-btn min-h-8 !px-2 !py-1 text-[11px] ${vibe.enabled ? "ui-btn-success" : "ui-btn-soft-action"}`}
+                                                >
+                                                    {vibe.enabled ? "已启用" : "已停用"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => deleteVibe(vibe.id)}
+                                                    className="ui-btn ui-btn-danger min-h-8 !px-2 !py-1 text-[11px] flex items-center justify-center gap-1"
+                                                >
+                                                    <Trash2 size={12} />
+                                                    删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -644,10 +781,10 @@ export function ImageGenerationSettings() {
                                     className="ui-btn ui-btn-soft-action min-h-11 shrink-0"
                                 >
                                     <RefreshCw size={16} className={isFetchingNaiModels ? "animate-spin" : ""} />
-                                    {isFetchingNaiModels ? "验证中" : "验证 Token"}
+                                    {isFetchingNaiModels ? "拉取中" : "验证并拉取模型"}
                                 </button>
                             </div>
-                            <span className="menu-desc ml-1 opacity-70">模型下拉列表内置于应用；“验证 Token”只检查凭证，不会发起生图。</span>
+                            <span className="menu-desc ml-1 opacity-70">填好接口地址与密钥后点击「验证并拉取模型」，下拉即可选择中转站的 Novel 模型。</span>
                         </div>
 
                         <div className="flex flex-col gap-1">
@@ -784,14 +921,6 @@ export function ImageGenerationSettings() {
                                     <Input type="text" value={activeOpenAiPreset.name} onChange={(event) => updateOpenAiPreset({ name: event.target.value })} placeholder="未命名预设" />
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                            <label className="menu-desc ml-1">请求方式</label>
-                            <Select value={activeOpenAiPreset.requestMode} onChange={(event) => updateOpenAiPreset({ requestMode: event.target.value as ImageGenerationSettingsType["requestMode"] })}>
-                                <option value="server">服务端转发（推荐，可避免跨域报错）</option>
-                                <option value="direct">浏览器直连（需接口允许 CORS 跨域）</option>
-                            </Select>
                         </div>
 
                         <div className="flex flex-col gap-1">

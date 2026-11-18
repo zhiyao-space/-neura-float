@@ -1,4 +1,5 @@
 export const NOVELAI_DEFAULT_MODEL = "nai-diffusion-4-curated-preview";
+export const NOVELAI_DEFAULT_BASE_URL = "https://image.novelai.net";
 export const NOVELAI_DEFAULT_RESOLUTION = "832x1216";
 export const NOVELAI_DEFAULT_SAMPLER = "k_euler";
 export const NOVELAI_DEFAULT_NOISE_SCHEDULE = "karras";
