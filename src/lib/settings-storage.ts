@@ -840,9 +840,8 @@ function normalizeImageGenerationSettings(settings: Partial<ImageGenerationSetti
         requestMode: rawNai?.requestMode === "server" || rawNai?.requestMode === "direct"
             ? rawNai.requestMode
             : requestMode,
-        baseUrl: typeof rawNai?.baseUrl === "string" && rawNai.baseUrl.trim()
-            ? rawNai.baseUrl.trim()
-            : NOVELAI_DEFAULT_BASE_URL,
+        // 允许保存空字符串（清空 = 用内置官方地址兜底，请求时再回退）；不在此处强改，否则输入框永远清不掉
+        baseUrl: typeof rawNai?.baseUrl === "string" ? rawNai.baseUrl.trim() : NOVELAI_DEFAULT_BASE_URL,
         activePresetId,
         presets: naiPresets,
         vibes: naiVibes,

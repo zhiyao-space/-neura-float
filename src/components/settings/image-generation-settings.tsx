@@ -251,7 +251,7 @@ export function ImageGenerationSettings() {
         return {
             apiKey: nai?.apiKey || "",
             requestMode: nai?.requestMode || settings.requestMode,
-            baseUrl: nai?.baseUrl || "https://image.novelai.net",
+            baseUrl: nai?.baseUrl !== undefined ? nai.baseUrl : "https://image.novelai.net",
             activePresetId: activePreset.id,
             presets,
             activePreset,
