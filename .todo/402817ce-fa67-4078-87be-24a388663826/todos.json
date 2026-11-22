@@ -28,5 +28,11 @@
     "status": "completed",
     "content": "build+dev 验证并推送",
     "skills": []
+  },
+  {
+    "id": "e1",
+    "status": "completed",
+    "content": "生图描述纯英文：指令约束+NAI CJK兜底，build+dev+推送",
+    "skills": []
   }
 ]
