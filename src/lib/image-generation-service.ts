@@ -55,6 +55,17 @@ const IMAGE_MODEL_HINTS = [
   "anime",
 ];
 
+/** 移除 NovelAI 不支持的中文/CJK 字符与中文标点，压缩多余空白。 */
+function sanitizeNovelAiPrompt(prompt: string): string {
+  return prompt
+    .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u30ff]/g, " ")
+    .replace(/[，、。！？：；“‘（）【】《》——…·]/g, ", ")
+    .replace(/\s*,\s*(,\s*)*/g, ", ")
+    .replace(/,\s*$/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function mergePrompt(description: string, extraPrompt: string): string {
   const main = description.trim();
   const extra = extraPrompt.trim();
@@ -668,7 +679,11 @@ export async function generateImageFromConfiguredApi(params: {
       : "";
     if (characterFeaturePrompt) positiveParts.push(characterFeaturePrompt);
     if (description) positiveParts.push(description);
-    const fullPrompt = positiveParts.join(", ");
+    const rawJoined = positiveParts.join(", ");
+    // NAI 提示词只认英文：含 CJK 时兜底清理（移除汉字/CJK标点），避免接口 400
+    const fullPrompt = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uf900-\ufaff]/.test(rawJoined)
+      ? sanitizeNovelAiPrompt(rawJoined)
+      : rawJoined;
 
     // Vibe 编码解析：有 encoded 直接用（缓存命中）；纯原图条目懒编码并回填缓存。
     const normalizedNaiModel = normalizeNovelAiModel(activePreset.model);
