@@ -1,38 +1,32 @@
 [
   {
-    "id": "v1",
-    "status": "completed",
-    "content": "重写 vibe-import.ts（zip全量/naiv4vibe/json/PNG隐写）",
-    "skills": []
+    "content": "novel-types + novel-storage 持久化",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
   },
   {
-    "id": "v2",
-    "status": "completed",
-    "content": "类型/存储支持 encoded 纯编码条目",
-    "skills": []
+    "content": "novel-engine：章节LLM生成+插图标签解析+生图",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
   },
   {
-    "id": "v3",
-    "status": "completed",
-    "content": "生图注入编码+懒编码 encode-vibe+V3格式",
-    "skills": []
+    "content": "novel-app 组件（书城/书架/设定/阅读器）+ novel.css",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
   },
   {
-    "id": "v4",
-    "status": "completed",
-    "content": "UI：编码徽标/导出编码",
-    "skills": []
+    "content": "desktop-config/desktop-shell 注册接线",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
   },
   {
-    "id": "v5",
-    "status": "completed",
-    "content": "build+dev 验证并推送",
-    "skills": []
-  },
-  {
-    "id": "e1",
-    "status": "completed",
-    "content": "生图描述纯英文：指令约束+NAI CJK兜底，build+dev+推送",
-    "skills": []
+    "content": "build+dev+截图验收+推送",
+    "priority": "high",
+    "skills": [],
+    "status": "in_progress"
   }
 ]
