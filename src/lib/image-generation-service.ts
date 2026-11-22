@@ -55,6 +55,11 @@ const IMAGE_MODEL_HINTS = [
   "anime",
 ];
 
+/** 判断生图描述中是否已包含服装/穿着信息（英文常见服饰词）。 */
+function hasOutfitHint(description: string): boolean {
+  return /\b(outfit|wearing|clothes|clothing|dress|uniform|hoodie|jacket|sweater|cardigan|shirt|t-?shirt|skirt|jeans|pants|trousers|shorts|suit|kimono|hanfu|qipao|bikini|swimsuit|pajamas|apron|coat|blazer|sneakers|boots|stockings|pantyhose)\b/i.test(description);
+}
+
 /** 移除 NovelAI 不支持的中文/CJK 字符与中文标点，压缩多余空白。 */
 function sanitizeNovelAiPrompt(prompt: string): string {
   return prompt
@@ -679,6 +684,7 @@ export async function generateImageFromConfiguredApi(params: {
       : "";
     if (characterFeaturePrompt) positiveParts.push(characterFeaturePrompt);
     if (description) positiveParts.push(description);
+    if (characterFeaturePrompt && hasOutfitHint(description)) positiveParts.push("outfit as described in scene prompt");
     const rawJoined = positiveParts.join(", ");
     // NAI 提示词只认英文：含 CJK 时兜底清理（移除汉字/CJK标点），避免接口 400
     const fullPrompt = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uf900-\ufaff]/.test(rawJoined)
@@ -777,8 +783,10 @@ export async function generateImageFromConfiguredApi(params: {
     : null;
   throwIfAborted(params.signal);
   const characterPrompt = reference?.featurePrompt?.trim() || "";
+  // 描述已明确服装时，固定外观仅约束长相，服饰以本次场景描述为准
+  const appearanceSuffix = hasOutfitHint(description) ? "\n(服饰/服装以场景描述为准)" : "";
   const prompt = mergePrompt(
-    characterPrompt ? `${description}\n\n【角色固定外观】${characterPrompt}` : description,
+    characterPrompt ? `${description}\n\n【角色固定外观】${characterPrompt}${appearanceSuffix}` : description,
     openaiSettings.extraPrompt,
   );
 
