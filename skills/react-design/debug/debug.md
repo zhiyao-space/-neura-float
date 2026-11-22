@@ -10,11 +10,11 @@
 
 ## 截图与通道
 
-- 基础 `meoo-cli read-browser-screenshot --context "当前可见内容"` 默认 `--source auto`：优先用户当前预览 iframe，不可用时降级沙箱浏览器首页。
+- 基础 `meoo-cli read-browser-screenshot --context "当前可见内容"` 固定优先用户当前预览 iframe，不可用时在同一次调用内自动降级沙箱浏览器首页；通道由平台选择，无需设置来源参数。
 - 指定页面：`meoo-cli read-browser-screenshot --path "/dashboard" --context "具体异常"`；先尝试 iframe 的指定路由，失败后降级沙箱浏览器同一路由。
-- `--source preview` 强制用户 iframe，不降级；`--source browser` 强制沙箱。指定沙箱视口可用 `--source browser --h5=true`（手机）或 `--h5=false`（桌面）；h5 只在沙箱分支生效。桌面高级沙箱截图保留完整页面，H5 使用手机视口截图。
+- 旧 `--source auto|preview|browser` 参数仅保留兼容，均不能跳过 iframe。iframe 截图前默认等待 1000 毫秒，可用 `--settle` 指定等待毫秒数。超过 5000 毫秒按 5000 执行；常规截图保持默认，不要逐张传最大等待值，负数按 0 执行。显式值在回退沙箱时也生效。动画定格通过 URL 指定场景、时刻和暂停状态。省略 `--h5` 时截 iframe 当前视口。显式传 `--h5=true`（手机）或 `--h5=false`（桌面）时，iframe 优先沿用对应模式；需要切换时临时调整布局，截图后恢复。回退沙箱时沿用指定模式。
 - 用户 iframe 通道受平台能力开关限制；读结果中的 screenshot_source、实际 URL、fallback_reason，不假定两个通道的路由、登录态、state 相同。
-- 首屏白屏/资源加载失败需要加载期证据时用沙箱来源。图片已经交付而 page_state/verified 为空时直接看图，不为补齐字段追加 DOM/求值。
+- 首屏白屏/资源加载失败先看本次返回的错误，确需加载期日志时使用下方日志命令。图片已经交付而 page_state/verified 为空时直接看图，不为补齐字段追加 DOM/求值。
 
 ## 日志
 
