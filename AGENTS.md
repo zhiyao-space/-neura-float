@@ -19,7 +19,7 @@
 - ❌ 中转站模型列表只按 image/dall/flux 等关键词过滤会滤掉 novel/nai 类模型 → IMAGE_MODEL_HINTS 需补 novel/nai/anime，过滤空时回退全量
 
 ## Lessons
-- CSS data-uri SVG 中未编码的 `url(%23n)` 会被 lightningcss 报 `Unexpected token Delim('%')`，需把 `<` `>` 引号统一 URL 编码；发布通道的 lightningcss 还会卡在 SVG 属性里的裸数字/空格/单引号（如 `opacity='0.06'`），本地 rolldown-vite 能过但发布失败——data-uri SVG 内空格与单引号也要编码（`%20` `%27`）
+- CSS data-uri SVG 噪点纹理会被发布通道 lightningcss 报错（本地 rolldown-vite 能过但发布失败），根治办法是彻底移除 data-uri SVG；注意 src/ 下有两套 CSS（根平铺 `src/*.css` 与 `src/styles/*.css`），清理必须两套都做，漏一套发布仍报同样错误
 - 预览环境 WebSocket 502/SSL 报错来自沙箱代理不支持 HMR ws，属噪音；`cdn.jsdelivr.net` 在沙箱内不可达
 - 存量 typecheck（tsc --noEmit）有约 50 处历史错误（qrcode 缺声明、ui/button 导出名不符等），build 本身可通过；改动的文件需自查别新增错误
 - 聊天室对 role="user" 且 content 为空的消息走 isHiddenChatFlowMessage → display:none；新增纯媒体气泡类型必须同时加进 chat-room.tsx 的 CHAT_VISUAL_MEDIA_TYPES 和 CHAT_MEDIA_BUBBLE_TYPES 两个集合，否则落库成功但界面不可见
