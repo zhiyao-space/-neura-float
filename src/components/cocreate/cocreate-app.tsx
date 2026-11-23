@@ -27,6 +27,13 @@ import {
   X,
 } from "lucide-react";
 import type { Character } from "@/lib/character-types";
+import { getChatImageFromIndexedDB } from "@/lib/chat-asset-storage";
+import {
+  applyIllustrationMediaRef,
+  extractPendingIllustrations,
+  generateIllustrationMediaRef,
+  splitIllustrationBlocks,
+} from "@/lib/cocreate-illustration";
 import { loadCharacters } from "@/lib/character-storage";
 import {
   createCoCreateMessage,
@@ -175,6 +182,94 @@ function CoCreateMarkdown({ content, className }: { content: string; className?:
       <ReactMarkdown remarkPlugins={[remarkGfm, remarkCjkFriendly]} components={COCREATE_MARKDOWN_COMPONENTS}>
         {cleaned}
       </ReactMarkdown>
+    </div>
+  );
+}
+
+/** 场景插图块：mediaRef → dataUrl 加载、生成中骨架、失败占位+重试。 */
+function CoCreateIllustrationBlock({
+  desc,
+  mediaRef,
+  onRetry,
+}: {
+  desc: string;
+  mediaRef: string | null;
+  onRetry?: (desc: string) => void;
+}) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setFailed(false);
+    if (!mediaRef) {
+      setDataUrl(null);
+      return () => { alive = false; };
+    }
+    getChatImageFromIndexedDB(mediaRef)
+      .then((url) => {
+        if (!alive) return;
+        if (url) setDataUrl(url);
+        else setFailed(true);
+      })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [mediaRef]);
+
+  if (!mediaRef) {
+    return (
+      <div className="cocreate-illustration cocreate-illustration-pending">
+        <span className="cocreate-illustration-label">场景插图</span>
+        <p className="cocreate-illustration-desc">{desc}</p>
+        {onRetry && (
+          <button type="button" className="cocreate-illustration-retry" onClick={() => onRetry(desc)}>
+            生成插图
+          </button>
+        )}
+      </div>
+    );
+  }
+  if (failed) {
+    return (
+      <div className="cocreate-illustration cocreate-illustration-pending">
+        <span className="cocreate-illustration-label">插图加载失败</span>
+        <p className="cocreate-illustration-desc">{desc}</p>
+        <button type="button" className="cocreate-illustration-retry" onClick={() => { setFailed(false); setDataUrl(null); if (mediaRef) setDataUrl(null); onRetry?.(desc); }}>
+          重新生成
+        </button>
+      </div>
+    );
+  }
+  return (
+    <figure className="cocreate-illustration">
+      {dataUrl
+        ? <img src={dataUrl} alt={desc} loading="lazy" />
+        : <div className="cocreate-illustration-skeleton"><span>插图生成中…</span></div>}
+      <figcaption>{desc}</figcaption>
+    </figure>
+  );
+}
+
+/** 图文混排正文：按 [插图:desc|mediaRef] 标签拆分为 文本/插图 块。 */
+function CoCreateRichContent({
+  content,
+  className,
+  onRetryIllustration,
+}: {
+  content: string;
+  className?: string;
+  onRetryIllustration?: (desc: string) => void;
+}) {
+  if (!content || !content.includes("[插图:")) {
+    return <CoCreateMarkdown content={content} className={className} />;
+  }
+  const blocks = splitIllustrationBlocks(content);
+  return (
+    <div className={`cocreate-rich ${className ?? ""}`.trim()}>
+      {blocks.map((block, index) => (
+        block.type === "text"
+          ? <CoCreateMarkdown key={index} content={block.content} />
+          : <CoCreateIllustrationBlock key={index} desc={block.desc} mediaRef={block.mediaRef} onRetry={onRetryIllustration} />
+      ))}
     </div>
   );
 }
@@ -1030,6 +1125,53 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
     setStatus(`已更新第 ${editingChapter.num} 章。`);
   }
 
+  /** 后台生成一条 assistant 回复里的场景插图，完成后把 mediaRef 回写进正文并持久化。 */
+  async function spawnIllustrationTasks(base: CoCreateSession, messageId: string): Promise<void> {
+    const illustrationSettings = base.settings;
+    if (illustrationSettings?.illustrationEnabled === false) return;
+    const limit = illustrationSettings?.illustrationLimit ?? 2;
+    const message = base.messages.find((item) => item.id === messageId);
+    if (!message || !message.content?.includes("[插图:")) return;
+    const pending = extractPendingIllustrations(message.content, limit);
+    let working = base;
+    for (const desc of pending) {
+      const mediaRef = await generateIllustrationMediaRef(desc).catch(() => null);
+      if (!mediaRef) continue;
+      const messages = working.messages.map((item) => (
+        item.id === messageId
+          ? { ...item, content: applyIllustrationMediaRef(item.content, desc, mediaRef) }
+          : item
+      ));
+      const chapters = working.chapters.map((chapter) => (
+        chapter.content && chapter.content.includes(`[插图:${desc}]`)
+          ? { ...chapter, content: applyIllustrationMediaRef(chapter.content, desc, mediaRef) }
+          : chapter
+      ));
+      working = { ...working, messages, chapters };
+      persistSession(working);
+    }
+  }
+
+  /** 手动（重试/补生成）一张插图：匹配正文中最先出现的同描述标签并回写。 */
+  async function retryIllustration(desc: string): Promise<void> {
+    const mediaRef = await generateIllustrationMediaRef(desc).catch(() => null);
+    if (!mediaRef) {
+      setError("插图生成失败，请检查生图 API 配置。");
+      return;
+    }
+    const current = sessionRef.current;
+    const patchContent = (content: string) => applyIllustrationMediaRef(content, desc, mediaRef);
+    const messages = current.messages.map((item) => (
+      item.content && item.content.includes(desc) ? { ...item, content: patchContent(item.content) } : item
+    ));
+    const chapters = current.chapters.map((chapter) => (
+      chapter.content && chapter.content.includes(desc)
+        ? { ...chapter, content: patchContent(chapter.content) }
+        : chapter
+    ));
+    persistSession({ ...current, messages, chapters });
+  }
+
   function updateRecentFullTextChapters(value: number): void {
     const recentFullTextChapters = Math.max(0, Math.min(10, Math.round(value)));
     persistSharedSettings({
@@ -1049,6 +1191,20 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
     persistSharedSettings({
       ...sharedSettings,
       autoAccept: enabled,
+    });
+  }
+
+  function setIllustrationEnabled(enabled: boolean): void {
+    persistSharedSettings({
+      ...sharedSettings,
+      illustrationEnabled: enabled,
+    });
+  }
+
+  function updateIllustrationLimit(value: number): void {
+    persistSharedSettings({
+      ...sharedSettings,
+      illustrationLimit: Math.max(1, Math.min(3, Math.round(value))),
     });
   }
 
@@ -1412,7 +1568,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
         liveMessages.push(createCoCreateMessage("assistant", generationMode, normalizedResult, partner.name, workingSession.activeChapterId || chapterId));
       }
       const baseSession = mergeCurrentWithWorkingSession(sessionRef.current, workingSession);
-      persistSession(appendBackendLog({
+      const finalSession = appendBackendLog({
         ...mergeLiveMessagesIntoSession(baseSession, liveMessages),
         turnsSinceSummary: 0,
       }, {
@@ -1429,7 +1585,11 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
         rawOutputs: result.rawOutputs,
         toolNotices: result.toolNotices,
         toolDebugs: result.toolDebugs,
-      }));
+      });
+      persistSession(finalSession);
+      if (generationMode === "write" && lastAssistantMessageId) {
+        void spawnIllustrationTasks(finalSession, lastAssistantMessageId);
+      }
       if (result.toolNotices?.length) {
         setStatus(result.toolNotices.join("；"));
       }
@@ -1894,7 +2054,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                 </button>
                 <span>ARCHIVE NOTE</span>
                 <strong>上一章结语</strong>
-                <CoCreateMarkdown content={previousArchiveNote} />
+                <CoCreateRichContent content={previousArchiveNote} />
               </aside>
             )}
 
@@ -1902,7 +2062,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
               if (message.mode === "chapter") {
                 return (
                   <article key={message.id} className="cocreate-chapter-card">
-                    <CoCreateMarkdown content={message.content} />
+                    <CoCreateRichContent content={message.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                   </article>
                 );
               }
@@ -1955,7 +2115,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                         )}
                         <time>{formatDate(message.createdAt)}</time>
                       </summary>
-                      <CoCreateMarkdown content={message.content} />
+                      <CoCreateRichContent content={message.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                     </details>
                   </article>
                 );
@@ -1979,7 +2139,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                       <i />
                       <time>{formatDate(message.createdAt)}</time>
                     </div>
-                    <CoCreateMarkdown content={message.content} />
+                    <CoCreateRichContent content={message.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                   </article>
                 );
               }
@@ -2046,7 +2206,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                               )}
                               <time>{formatDate(step.createdAt)}</time>
                             </summary>
-                            <CoCreateMarkdown content={step.content} />
+                            <CoCreateRichContent content={step.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                           </details>
                         );
                       }
@@ -2066,11 +2226,11 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                             <i />
                             <time>{formatDate(step.createdAt)}</time>
                           </div>
-                          <CoCreateMarkdown content={step.content} />
+                          <CoCreateRichContent content={step.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                         </article>
                       );
                     })}
-                    <CoCreateMarkdown content={message.content} />
+                    <CoCreateRichContent content={message.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                   </article>
                 );
               }
@@ -2139,7 +2299,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                             )}
                             <time>{formatDate(step.createdAt)}</time>
                           </summary>
-                          <CoCreateMarkdown content={step.content} />
+                          <CoCreateRichContent content={step.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                         </details>
                       );
                     }
@@ -2159,11 +2319,11 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                           <i />
                           <time>{formatDate(step.createdAt)}</time>
                         </div>
-                        <CoCreateMarkdown content={step.content} />
+                        <CoCreateRichContent content={step.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                       </article>
                     );
                   })}
-                  <CoCreateMarkdown content={message.content} />
+                  <CoCreateRichContent content={message.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                 </article>
               );
             })}
@@ -2485,7 +2645,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                   : editingChapter.summary?.trim() ? (
                     <>
                       <span className="cocreate-sticky-label">CHAPTER SUMMARY</span>
-                      <CoCreateMarkdown content={editingChapter.summary} />
+                      <CoCreateRichContent content={editingChapter.summary} />
                     </>
                   ) : null}
               </aside>
@@ -2504,7 +2664,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
               {chapterReaderEditing
                 ? null
                 : editingChapter.content?.trim() ? (
-                  <CoCreateMarkdown content={editingChapter.content} />
+                  <CoCreateRichContent content={editingChapter.content} onRetryIllustration={(desc) => void retryIllustration(desc)} />
                 ) : (
                   <div className="cocreate-reader-empty">
                     <span>EMPTY PAGE</span>
@@ -2527,7 +2687,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
             {editingChapter.archiveNote?.trim() && !chapterReaderEditing && (
               <aside className="cocreate-reader-sticky cocreate-reader-sticky-note">
                 <span className="cocreate-sticky-label">ARCHIVE NOTE</span>
-                <CoCreateMarkdown content={editingChapter.archiveNote} />
+                <CoCreateRichContent content={editingChapter.archiveNote} />
               </aside>
             )}
           </section>
@@ -2919,6 +3079,30 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                 </span>
                 <em>{sharedSettings.autoAccept ? "ON" : "OFF"}</em>
               </button>
+              <button
+                type="button"
+                className="cocreate-setting-toggle"
+                data-active={sharedSettings.illustrationEnabled !== false ? "1" : undefined}
+                aria-pressed={sharedSettings.illustrationEnabled !== false}
+                onClick={() => setIllustrationEnabled(!(sharedSettings.illustrationEnabled !== false))}
+              >
+                <span>
+                  <strong>场景插图</strong>
+                  <small>写模式正文中 AI 输出的画面标签会自动生成插图（画风走生图设置里的 Vibe 编码）。</small>
+                </span>
+                <em>{sharedSettings.illustrationEnabled !== false ? "ON" : "OFF"}</em>
+              </button>
+              <label className="cocreate-setting-field">
+                <span>每条回复插图上限（{sharedSettings.illustrationLimit ?? 2} 张）</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={1}
+                  value={sharedSettings.illustrationLimit ?? 2}
+                  onChange={(event) => updateIllustrationLimit(Number(event.target.value))}
+                />
+              </label>
               <label className="cocreate-setting-field">
                 <span>传入最近{sharedSettings.recentFullTextChapters}章全文章节</span>
                 <div>

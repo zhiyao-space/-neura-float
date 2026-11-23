@@ -59,6 +59,9 @@ export type CoCreateSettings = {
   streamingEnabled: boolean;
   autoAccept: boolean;
   memorySummaryInterval: number;
+  /** 场景插图：写模式正文中 [插图:英文描述] 标签自动生图（画风走全局 NovelAI vibes）。 */
+  illustrationEnabled?: boolean;
+  illustrationLimit?: number;
 };
 
 export type CoCreateToolArtifactType = "index" | "fulltext" | "search" | "mutation" | "dossier" | "cast" | "notebook";

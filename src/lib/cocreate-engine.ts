@@ -250,6 +250,18 @@ function buildProjectContext(session: CoCreateSession, _mode: CoCreateMode | "ar
   if (session.rollingSummary?.trim()) {
     sections.push("", "## 历史共创摘要", session.rollingSummary.trim());
   }
+  // 场景插图指令：仅写模式注入，AI 在正文关键画面处输出纯英文插图标签
+  if (_mode === "write" && session.settings?.illustrationEnabled !== false) {
+    sections.push(
+      "",
+      "## 场景插图规则",
+      "在正文的关键画面处（新场景开启、重要动作画面、章节高潮）输出插图标签，格式为 [插图:纯英文画面描述]。",
+      "- **硬性语言约束**：插图描述必须100%纯英文（Danbooru 标签或英文短句），严禁任何中文/汉字/中文标点，否则生图接口会 400 报错；正文其余部分保持中文。",
+      "- 只写可见画面（主体、动作、环境、光线、构图、服饰），要素具体；不写心理、剧情、声音。",
+      "- 每条回复最多输出 1-2 个插图标签，不要每段都插；标签独占一行，前后与正文空行隔开。",
+      "- 服装描述要符合当前场景与季节，随剧情自然变化，不要每次同一套。",
+    );
+  }
   return sections.join("\n");
 }
 

@@ -29,6 +29,8 @@ const DEFAULT_SETTINGS: CoCreateSettings = {
   streamingEnabled: false,
   autoAccept: true,
   memorySummaryInterval: 20,
+  illustrationEnabled: true,
+  illustrationLimit: 2,
 };
 
 export function createDefaultCoCreateSettings(): CoCreateSettings {
@@ -38,6 +40,8 @@ export function createDefaultCoCreateSettings(): CoCreateSettings {
     streamingEnabled: DEFAULT_SETTINGS.streamingEnabled,
     autoAccept: DEFAULT_SETTINGS.autoAccept,
     memorySummaryInterval: DEFAULT_SETTINGS.memorySummaryInterval,
+    illustrationEnabled: DEFAULT_SETTINGS.illustrationEnabled,
+    illustrationLimit: DEFAULT_SETTINGS.illustrationLimit,
   };
 }
 
@@ -66,7 +70,15 @@ function normalizeSettings(value: unknown): CoCreateSettings {
     streamingEnabled: rawSettings?.streamingEnabled === true,
     autoAccept: rawSettings?.autoAccept !== false,
     memorySummaryInterval: clampMemorySummaryInterval(rawSettings?.memorySummaryInterval),
+    illustrationEnabled: rawSettings?.illustrationEnabled !== false,
+    illustrationLimit: clampIllustrationLimit(rawSettings?.illustrationLimit),
   };
+}
+
+function clampIllustrationLimit(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return DEFAULT_SETTINGS.illustrationLimit ?? 2;
+  return Math.max(1, Math.min(3, Math.round(numeric)));
 }
 
 function nowIso(): string {

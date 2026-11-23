@@ -3265,3 +3265,94 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── 场景插图（图文混排） ─────────────────────────────── */
+.cocreate-rich {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cocreate-illustration {
+  margin: 6px 0;
+  padding: 0;
+  border: 0.5px solid rgba(245, 240, 230, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.cocreate-illustration img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cocreate-illustration figcaption {
+  padding: 6px 10px;
+  font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--cc-faint, rgba(245, 240, 230, 0.28));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cocreate-illustration-skeleton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  background:
+    linear-gradient(100deg, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.02) 60%);
+  background-size: 200% 100%;
+  animation: cocreate-illustration-shimmer 1.4s linear infinite;
+  color: var(--cc-muted, rgba(245, 240, 230, 0.52));
+  font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+@keyframes cocreate-illustration-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -80% 0; }
+}
+
+.cocreate-illustration-pending {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.cocreate-illustration-label {
+  font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cc-yellow, #f5e042);
+}
+
+.cocreate-illustration-desc {
+  margin: 0;
+  font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+  font-size: 11px;
+  color: var(--cc-text, rgba(245, 240, 230, 0.82));
+  word-break: break-all;
+}
+
+.cocreate-illustration-retry {
+  padding: 5px 14px;
+  border: 0.5px solid rgba(245, 240, 230, 0.2);
+  background: transparent;
+  color: var(--cc-ink, rgba(245, 240, 230, 0.94));
+  font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cocreate-illustration-retry:hover {
+  border-color: var(--cc-yellow, #f5e042);
+  color: var(--cc-yellow, #f5e042);
+}
