@@ -1,12 +1,30 @@
 [
   {
-    "content": "移除小说模块（文件+接线）",
+    "content": "类型/存储：插图设置字段",
     "priority": "high",
     "skills": [],
     "status": "completed"
   },
   {
-    "content": "build+dev 验证并推送",
+    "content": "指令层：写模式插图规则",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
+  },
+  {
+    "content": "服务层：插图引擎 lib/cocreate-illustration.ts",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
+  },
+  {
+    "content": "UI：消息流/阅读器插图渲染+设置开关+挂接",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
+  },
+  {
+    "content": "build+dev+截图+推送",
     "priority": "high",
     "skills": [],
     "status": "completed"
