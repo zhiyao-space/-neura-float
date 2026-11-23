@@ -3,12 +3,12 @@
     "content": "移除小说模块（文件+接线）",
     "priority": "high",
     "skills": [],
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "build+dev 验证并推送",
     "priority": "high",
     "skills": [],
-    "status": "pending"
+    "status": "completed"
   }
 ]
