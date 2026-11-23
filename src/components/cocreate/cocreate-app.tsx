@@ -1131,19 +1131,27 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
     if (illustrationSettings?.illustrationEnabled === false) return;
     const limit = illustrationSettings?.illustrationLimit ?? 2;
     const message = base.messages.find((item) => item.id === messageId);
-    if (!message || !message.content?.includes("[插图:")) return;
+    if (!message || !/\[插图[:：]/.test(message.content)) return;
     const pending = extractPendingIllustrations(message.content, limit);
+    console.log("[cocreate-illustration] pending tasks:", pending.length, pending.slice(0, 1));
     let working = base;
     for (const desc of pending) {
-      const mediaRef = await generateIllustrationMediaRef(desc).catch(() => null);
-      if (!mediaRef) continue;
+      const mediaRef = await generateIllustrationMediaRef(desc).catch((err) => {
+        console.error("[cocreate-illustration] generate failed:", desc.slice(0, 40), err);
+        return null;
+      });
+      if (!mediaRef) {
+        console.warn("[cocreate-illustration] no mediaRef returned for:", desc.slice(0, 40));
+        continue;
+      }
+      console.log("[cocreate-illustration] mediaRef ok:", mediaRef.slice(0, 24));
       const messages = working.messages.map((item) => (
         item.id === messageId
           ? { ...item, content: applyIllustrationMediaRef(item.content, desc, mediaRef) }
           : item
       ));
       const chapters = working.chapters.map((chapter) => (
-        chapter.content && chapter.content.includes(`[插图:${desc}]`)
+        chapter.content && /\[插图[:：]/.test(chapter.content)
           ? { ...chapter, content: applyIllustrationMediaRef(chapter.content, desc, mediaRef) }
           : chapter
       ));
