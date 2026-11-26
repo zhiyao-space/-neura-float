@@ -1,12 +1,24 @@
 [
   {
-    "content": "新建 worldbook-import-parser.ts（TXT/HTML 解析）",
+    "content": "桌面注册 gufeng 图标+字形",
     "priority": "high",
     "skills": [],
     "status": "completed"
   },
   {
-    "content": "worldbook-manager 接线：accept+分发+提示",
+    "content": "gufeng-data.ts 签文/提示词库",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
+  },
+  {
+    "content": "gufeng-app.tsx 四个玩法+gufeng.css",
+    "priority": "high",
+    "skills": [],
+    "status": "completed"
+  },
+  {
+    "content": "MainApp 装配路由",
     "priority": "high",
     "skills": [],
     "status": "completed"
