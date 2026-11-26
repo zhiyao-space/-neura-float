@@ -24,5 +24,6 @@
 - 存量 typecheck（tsc --noEmit）有约 50 处历史错误（qrcode 缺声明、ui/button 导出名不符等），build 本身可通过；改动的文件需自查别新增错误
 - 聊天室对 role="user" 且 content 为空的消息走 isHiddenChatFlowMessage → display:none；新增纯媒体气泡类型必须同时加进 chat-room.tsx 的 CHAT_VISUAL_MEDIA_TYPES 和 CHAT_MEDIA_BUBBLE_TYPES 两个集合，否则落库成功但界面不可见
 - 媒体气泡外壳被 .chat-bubble-media 强制 transparent，卡片类气泡必须自带背景色+边框，否则白底卡片在白背景上"隐形"
+- 桌面 App 全屏页根容器必须 `position:absolute; inset:0` 且显式 `z-index:30`（与 .mixology-app 一致），漏 z-index 会被状态栏/停靠栏的透明层盖住，出现"按钮看得见点不了"的假摆设
 - 聊天气泡组件是运行时热路径：气泡内引用未定义变量会炸掉整个聊天组件（白屏），vite build 不报这类错（仅 esbuild 转译）——改气泡组件后必须 `npx tsc --noEmit` 自查该文件无新增错误
 - NovelAI 原生端点生成请求只认 encode-vibe 编码（Vibe Transfer 的 reference_image_multiple），塞原始图片 base64 会报 400 INVALID_NATIVE_REQUEST；原图条目需先 POST /ai/encode-vibe（中转站 /v1 前缀）并按 图片+强度+模型 缓存
