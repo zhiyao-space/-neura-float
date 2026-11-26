@@ -10,6 +10,7 @@
         radial-gradient(ellipse at 85% 100%, rgba(163, 63, 47, 0.08), transparent 50%),
         #f3ecdd;
     color: #3d3226;
+    z-index: 30;
     overflow: hidden;
 }
 
