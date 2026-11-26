@@ -4273,7 +4273,8 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
 
     if (activeApp === "mixology") {
       return <MixologyApp onClose={() => setActiveApp(null)} />;
-    
+    }
+
     if (activeApp === "appmarket") {
       return (
         <AppMarketApp
