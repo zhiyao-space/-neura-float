@@ -77,6 +77,24 @@ export const GUFENG_GIFTS: GuFengGift[] = [
     { name: "长明灯", icon: "M12,2A7,7 0 0,0 5,9C5,12.87 8.13,16 12,16A7,7 0 0,0 19,9A7,7 0 0,0 12,2M12,4A5,5 0 0,1 17,9C17,11.76 14.76,14 12,14A5,5 0 0,1 7,9A5,5 0 0,1 12,4M8,17H16V19H8V17M9,20H15V22H9V20Z", message: "一盏长明伴君侧，夜路有光，归途有候。" },
 ];
 
+export type GuFengTool = { name: string; icon: string; inscription: string };
+
+/** 器物阁：古人随身的器物（icon 为内联 mdi path），点击即以器物卡气泡发送 */
+export const GUFENG_TOOLS: GuFengTool[] = [
+    { name: "佩剑", icon: "M6.92,5H5L14,9.5L19.55,3.96L20.04,4.45L14.5,10L19,19H17.08L13.58,12.31L10.54,15.35L11,17.54L9.54,19L7.65,17.11L5.76,19L4.5,17.74L6.92,5Z", inscription: "剑者，心之刃也，非快意恩仇不可轻出。" },
+    { name: "铜钱", icon: "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M10,8H14V10H16V14H14V16H10V14H8V10H10V8M10,10V14H14V10H10Z", inscription: "外圆内方，通行天下；一钱虽小，可问穷通。" },
+    { name: "罗盘", icon: "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M16,8L13.5,13.5L8,16L10.5,10.5L16,8Z", inscription: "天南地北，皆归一针。" },
+    { name: "铜镜", icon: "M12,2A8,8 0 0,0 4,10A8,8 0 0,0 11,17.94V21H13V17.94A8,8 0 0,0 20,10A8,8 0 0,0 12,2M12,4A6,6 0 0,1 18,10A6,6 0 0,1 12,16A6,6 0 0,1 6,10A6,6 0 0,1 12,4M9,21V22H15V21H9Z", inscription: "以铜为镜，可正衣冠；以卿为镜，可照我心。" },
+    { name: "卷轴", icon: "M6,2H18A2,2 0 0,1 20,4V16A2,2 0 0,1 18,18H6A2,2 0 0,1 4,16V4A2,2 0 0,1 6,2M7,6V8H17V6H7M7,10V12H17V10H7M7,14V16H14V14H7M6,20H18V22H6V20Z", inscription: "一卷在手，江山万里。" },
+    { name: "酒壶", icon: "M8,2H16V4H15V10L17,12V20A2,2 0 0,1 15,22H9A2,2 0 0,1 7,20V12L9,10V4H8V2M10,13V19H14V13H10Z", inscription: "壶中日月长，杯里乾坤大。" },
+    { name: "香炉", icon: "M8,10H16A3,3 0 0,1 19,13A7,7 0 0,1 12,20A7,7 0 0,1 5,13A3,3 0 0,1 8,10M12,2C12,2 11,3.5 11,4.5A1.5,1.5 0 0,0 14,4.5C14,3.5 12,2 12,2M8,4C8,4 7.5,5 7.5,5.75A1.25,1.25 0 0,0 10,5.75C10,5 8,4 8,4M16,4C16,4 15.5,5 15.5,5.75A1.25,1.25 0 0,0 18,5.75C18,5 16,4 16,4Z", inscription: "一炉沉水香，静候知音来。" },
+    { name: "油纸伞", icon: "M12,2A10,10 0 0,1 22,12H2A10,10 0 0,1 12,2M11,12V19A3,3 0 0,0 14,22A3,3 0 0,0 17,19H15A1,1 0 0,1 13,19V12H11Z", inscription: "一伞烟雨，半世浮生。" },
+    { name: "灯笼", icon: "M12,2A2,2 0 0,0 10,4V5H8V19H10V20A2,2 0 0,0 14,20V19H16V5H14V4A2,2 0 0,0 12,2M11,7H13V11H11V7M11,13H13V17H11V13Z", inscription: "一盏灯火，照夜归人。" },
+    { name: "木笛", icon: "M2,10H16A4,4 0 0,1 20,12A4,4 0 0,1 16,14H2V10M4,11V13H6V11H4M8,11V13H10V11H8M12,11V13H14V11H12M16,11V13A2,2 0 0,0 18,12A2,2 0 0,0 16,11Z", inscription: "笛声三弄，梅心惊破。" },
+    { name: "锦囊", icon: "M12,2L16,6H8L12,2M7,8H17L19,12V19A2,2 0 0,1 17,21H7A2,2 0 0,1 5,19V12L7,8M12,12A3,3 0 0,0 9,15A3,3 0 0,0 12,18A3,3 0 0,0 15,15A3,3 0 0,0 12,12Z", inscription: "锦囊妙计，危时方启。" },
+    { name: "令牌", icon: "M12,2L20,5V11C20,16.5 16.66,20.92 12,22C7.34,20.92 4,16.5 4,11V5L12,2M12,7A3,3 0 0,0 9,10V11H8V15H16V11H15V10A3,3 0 0,0 12,7M12,9A1,1 0 0,1 13,10V11H11V10A1,1 0 0,1 12,9Z", inscription: "见令如见人，持令行四方。" },
+];
+
 export const COUPLET_SYSTEM_PROMPT = (persona: string) =>
     `你是古风对句雅士${persona ? `（口吻参考：${persona}）` : ""}。用户请你出上联。\n` +
     `只输出一句上联（七言或五言，不加标点以外的任何文字），严格对仗工整、平仄和谐。严禁 emoji。`;
@@ -96,6 +114,7 @@ export function buildGufengPlayLabel(kind: string, data: Record<string, unknown>
         case "verse": return `[飞花令·${data.tokenChar}] ${data.verse || ""}`;
         case "sign": return `[月老签·${data.level}]`;
         case "gift": return `[赠信物·${data.giftName}]`;
+        case "tool": return `[器物阁·${data.toolName}] ${data.inscription || ""}`;
         case "couplet": return `[对联] 上联：${data.upper}｜下联：${data.lower}`;
         case "elegant": return `[雅言] ${data.elegant || ""}`;
         default: return "[古风雅玩]";

@@ -12,11 +12,12 @@ import {
     GUFENG_GIFTS,
     GUFENG_SIGNS,
     GUFENG_TOKEN_CHARS,
+    GUFENG_TOOLS,
     buildGufengPersona,
 } from "@/lib/gufeng-data";
 import "@/gufeng-chat.css";
 
-type PlayKind = "verse" | "sign" | "gift" | "couplet" | "elegant" | "truth_dare" | "mood_box";
+type PlayKind = "verse" | "sign" | "gift" | "tool" | "couplet" | "elegant" | "truth_dare" | "mood_box";
 
 const ICONS: Record<string, string> = {
     feihua: "M12,2C12.89,2 13.66,2.5 14.06,3.23C14.5,3.03 15,2.92 15.5,2.92C17.71,2.92 19.5,4.71 19.5,6.92C19.5,7.42 19.4,7.89 19.22,8.32C20.35,8.81 21.15,9.92 21.15,11.23C21.15,12.54 20.35,13.65 19.22,14.14C19.4,14.57 19.5,15.04 19.5,15.54C19.5,17.75 17.71,19.54 15.5,19.54C15,19.54 14.53,19.45 14.1,19.27C13.61,20.35 12.52,21.15 11.23,21.15C9.94,21.15 8.85,20.35 8.36,19.27C7.93,19.45 7.46,19.54 6.96,19.54C4.75,19.54 2.96,17.75 2.96,15.54C2.96,15.04 3.06,14.57 3.24,14.14C2.11,13.65 1.31,12.54 1.31,11.23C1.31,9.92 2.11,8.81 3.24,8.32C3.06,7.89 2.96,7.42 2.96,6.92C2.96,4.71 4.75,2.92 6.96,2.92C7.46,2.92 7.93,3.01 8.36,3.19C8.85,2.11 9.94,1.31 11.23,1.31L12,2Z",
@@ -26,6 +27,7 @@ const ICONS: Record<string, string> = {
     elegant: "M20.44,3.56C19.19,2.31 16.56,3.06 14.44,5.19L5.19,14.44C3.06,16.56 2.31,19.19 3.56,20.44C4.81,21.69 7.44,20.94 9.56,18.81L18.81,9.56C20.94,7.44 21.69,4.81 20.44,3.56Z",
     truth: "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z",
     mood: "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z",
+    tools: "M6,2H18A2,2 0 0,1 20,4V16A2,2 0 0,1 18,18H6A2,2 0 0,1 4,16V4A2,2 0 0,1 6,2M7,6V8H17V6H7M7,10V12H17V10H7M7,14V16H14V14H7M6,20H18V22H6V20Z",
 };
 
 function GfpIcon({ path, size = 22 }: { path: string; size?: number }) {
@@ -48,7 +50,7 @@ export function GuFengPlayPanel({ character, onClose, onSend }: {
 }) {
     const isAncient = !!character?.tags?.some((t) => t.includes("古风") || t.includes("古代") || t.includes("武侠"));
     const [mode, setMode] = useState<"gufeng" | "modern">(isAncient ? "gufeng" : "modern");
-    const [view, setView] = useState<"menu" | "feihua" | "gift" | "couplet" | "elegant" | "truth_dare">("menu");
+    const [view, setView] = useState<"menu" | "feihua" | "gift" | "tools" | "couplet" | "elegant" | "truth_dare">("menu");
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const persona = personaOf(character);
@@ -82,6 +84,12 @@ export function GuFengPlayPanel({ character, onClose, onSend }: {
     function playGift(giftIndex: number) {
         const gift = GUFENG_GIFTS[giftIndex];
         onSend("gift", { giftName: gift.name, giftIcon: gift.icon, giftMessage: gift.message }, gift.message);
+        onClose();
+    }
+
+    function playTool(toolIndex: number) {
+        const tool = GUFENG_TOOLS[toolIndex];
+        onSend("tool", { toolName: tool.name, toolIcon: tool.icon, inscription: tool.inscription }, `[器物阁·${tool.name}] ${tool.inscription}`);
         onClose();
     }
 
@@ -144,6 +152,7 @@ export function GuFengPlayPanel({ character, onClose, onSend }: {
         { key: "gift", label: "投我木桃", onClick: () => setView("gift") },
         { key: "couplet", label: "对联求对", onClick: playCoupletStart },
         { key: "elegant", label: "称谓雅鉴", onClick: () => setView("elegant") },
+        { key: "tools", label: "器物阁", onClick: () => setView("tools") },
     ];
     const modernItems = [
         { key: "truth", label: "真心话大冒险", onClick: playTruthDare },
@@ -202,6 +211,20 @@ export function GuFengPlayPanel({ character, onClose, onSend }: {
                     </div>
                 )}
 
+                {view === "tools" && (
+                    <div className="gfp-body">
+                        <div className="gfp-hint">器物阁 · 择一件古人随身之物相示。</div>
+                        <div className="gfp-gift-row">
+                            {GUFENG_TOOLS.map((t, i) => (
+                                <button key={t.name} className="gfp-gift" disabled={busy} onClick={() => playTool(i)}>
+                                    <GfpIcon path={t.icon} size={26} />
+                                    <span>{t.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {view === "couplet" && (
                     <div className="gfp-body">
                         <div className="gfp-hint">上联</div>
@@ -231,7 +254,7 @@ export function GuFengPlayPanel({ character, onClose, onSend }: {
 export function GuFengPlayBubble({ msg }: { msg: ChatMessage }) {
     const d = (msg.mediaData || {}) as Record<string, unknown>;
     const kind = String(d.kind || "");
-    const ancient = ["verse", "sign", "gift", "couplet", "elegant"].includes(kind);
+    const ancient = ["verse", "sign", "gift", "tool", "couplet", "elegant"].includes(kind);
 
     return (
         <div className={`gfp-bubble${ancient ? "" : " modern"}`}>
@@ -250,6 +273,13 @@ export function GuFengPlayBubble({ msg }: { msg: ChatMessage }) {
                         <GfpIcon path={String(d.giftIcon)} size={34} />
                         <div className="gfp-bubble-title">{String(d.giftName)}</div>
                         <div className="gfp-bubble-note">{String(d.giftMessage)}</div>
+                    </div>
+                )}
+                {kind === "tool" && (
+                    <div className="gfp-bubble-body gift">
+                        <GfpIcon path={String(d.toolIcon)} size={34} />
+                        <div className="gfp-bubble-title">器物阁 · {String(d.toolName)}</div>
+                        <div className="gfp-bubble-note">{String(d.inscription)}</div>
                     </div>
                 )}
                 {kind === "couplet" && (
