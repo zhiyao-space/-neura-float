@@ -1,48 +1,59 @@
 # 需求文档
 
 ## 1. 改动目标
-新增一个「古风雅集」内置小应用（不换现有 UI、不动整体界面）：集合几款古风趣味小功能，让古风人设的角色有对应玩法。所有图标用 @mdi/js 精美矢量字形 + 自绘装饰，全程零 emoji。
+在「与角色聊天」里加一组古风互动小功能：角色是古风人设（tags 含 古风/古代/武侠）时，聊天「+」面板出现「古风雅玩」入口，点开是一组精美的古风互动玩法；现代角色不显示该入口。整体视觉宣纸米色+墨色+朱砂，全部矢量字形与自绘装饰，零 emoji。
 
 ## 2. 探索结论（受影响文件，全部绝对路径）
-- 桌面 App 注册：`/home/project/src/lib/desktop-config.ts`（IconId union L3-32、ICONS Record L76-128、PAGE_X_DEFAULT）
-- 图标字形：`/home/project/src/components/icon-glyph.tsx`（MDI_PATHS Record L50-80，新增 IconId 必须同步加 key，否则白屏/方块兜底）
-- 应用市场/桌面装配：桌面图标点击路由走 MainApp 的 app 分发（mixology/qa 等同为内联页面 App，可参照其路由挂载方式）
-- LLM 调用参照：`/home/project/src/lib/cocreate-engine.ts` 的 sendLLMRequest 模式；聊天主链路 `/home/project/src/lib/chat-engine.ts` generateChatCompletion
-- 类型契约：`/home/project/src/lib/character-types.ts` Character.tags 判断古风人设
-- 样式：新增 `src/gufeng.css`（项目根平铺 CSS 一套即可，无 data-uri SVG）
+- 聊天主组件 `/home/project/src/components/chat/chat-room.tsx`（热路径）：
+  - L1149 `character` state（可直接读 `character.tags` 判断古风）
+  - L3561 `sendRichMessage(mediaType, mediaData, content, mediaUrl)` 落库入口，自定义 mediaType 走它即可（gift/poke 分支是现成参照）
+  - L945-957 `showPlusMenu` 面板渲染处（功能入口按钮加在这里）
+  - L183-201 `CHAT_VISUAL_MEDIA_TYPES`、L232-247 `CHAT_MEDIA_BUBBLE_TYPES`：新增媒体气泡类型必须同时进两个 Set
+- 已有互动参照：掷骰子（mediaType:"dice" + 翻滚动画）、红包（点开动画+结果卡）
+- LLM 通道：`/home/project/src/lib/api-helpers.ts` `simpleLLMCall(config, messages, options)`，配置用 `loadApiConfigs()[0]`（与 gufeng-app.tsx 相同）
+- 现有古风数据与提示词：`/home/project/src/lib/gufeng-data.ts`（可复用扩展）
+- 样式：新增 `src/gufeng-chat.css`（聊天内弹层，遵守弹层自带上背景/边框的教训）
 
-## 3. 功能设计（首版四件套）
-进入应用顶部先选对话角色（古风 tag 角色排前），底部四个雅玩入口：
+## 3. 玩法设计（聊天内古风雅玩，共五款）
+「+」面板古风角色专属入口「雅玩」，点开横排五枚矢量印章式图标（无 emoji）：
 
-1. **飞花令**：输入一个令字（花/月/风/雪…），AI 依令接诗句，双方轮流，判负判定+雅致成绩单卡片
-2. **抽签问卜**：纯本地签筒动画，抽得签文（上上/中平/下签 + 签诗 + 解语），签文内置 24 支古签库，可点击让 AI 以角色口吻详解
-3. **文言雅译**：输入现代白话，AI 转成文言/古风措辞，输出宣纸样式卡片
-4. **历法雅鉴**：纯前端计算今日农历·干支·生肖·宜忌，每日一签式展示（不依赖 LLM）
+1. **飞花传令**：选令字（花/月/风/雪…），AI 以角色口吻接一句含令字的诗，落一条「诗笺」卡片气泡
+2. **月老签**：摇签动画 → 抽得签文诗笺气泡（复用 gufeng-data 24 签库），可点「请 TA 解签」让角色口吻解签再落一条
+3. **投我木桃**：向角色赠古风信物（玉佩/香囊/折扇/梅花/长明灯），矢量信物卡 + 赠语，角色会自然接话
+4. **对联求对**：AI 出上联，用户对下联，双方对联卡片上下并排展示
+5. **称谓雅鉴**：AI 把当前对话里最近一句话改写成角色口吻的古风说法，生成「雅言」小卡
 
-视觉取向：宣纸米色 + 墨色 + 朱砂点缀，衬线古风字体气质，竖排题字装饰、印章式按钮（SVG/cCSS 自绘，无 emoji）。
+所有玩法结果都以自定义 mediaType `"gu_feng_play"` 落库（mediaData 携带 kind 区分渲染），触发角色正常回复（sendRichMessage 已带 setPendingGenerate(true)）。
 
-## 4. 实施步骤
-1. `desktop-config.ts`：IconId 加 `"gufeng"`、ICONS 加条目（label「古风雅集」，tone 用现成 --c-icon-amber 系）
-2. `icon-glyph.tsx`：`@mdi/js` 取 mdiBrushOutline 或自绘一枝梅花 path，加入 MDI_PATHS
-3. 新建 `src/components/gufeng/gufeng-app.tsx`：App 主体 + 三个 AI 玩法 + 历法组件；LLM 调用走项目现有 provider 配置（参照 cocreate-engine resolveRuntime/sendLLMRequest 模式，appId 用 `"gufeng"`）
-4. 新建 `src/lib/gufeng-data.ts`：签文库、令字库、飞花令提示词、文言译指令（描述输出纯中文，生图无关）
-5. 新建 `src/gufeng.css`：古风样式（宣纸底、墨字、朱砂印）
-6. 桌面路由装配：参照 mixology 在 MainApp 的挂载方式把 gufeng-app 挂进应用分发
-7. `AGENTS.md` 补一行教训：icon-glyph MDI_PATHS 必须与 IconId 同步
+## 4. 视觉风格
+- 参考方向：宣纸质感卡片、墨色衬线字、朱砂印章点缀、细描边矢量图标（@mdi/js + 自绘 SVG path），留白疏朗、信息密度低
+- 受影响区块：聊天「+」面板入口、雅玩弹层、五种结果卡气泡
+- 弹层遵守项目教训：卡片自带背景色+边框，白底不隐形
 
-## 5. 异常与边界
+## 5. 实施步骤
+1. `gufeng-data.ts` 扩展：信物库、对联/称谓提示词、诗笺渲染所需字段
+2. 新建 `src/components/chat/gufeng-chat-play.tsx`：雅玩弹层组件（五入口 + 各玩法交互 + 生成结果构造 mediaData），LLM 用 simpleLLMCall，API 未配置时仅可玩本地款（投木桃/月老签）
+3. `chat-room.tsx` 接线：
+   - 两个 Set 加 `"gu_feng_play"`（严格按行号两处）
+   - L945 面板内按 `character?.tags` 条件渲染「雅玩」按钮
+   - MessageBubble 渲染分支：按 mediaData.kind 渲染诗笺/签/信物/对联/雅言五种卡片
+4. 新建 `src/gufeng-chat.css`，弹层与卡片样式
+5. `npx tsc --noEmit` 自查 chat-room 与新文件零新增错误 → build → dev → 推送
+
+## 6. 异常与边界
 | 场景 | 处理 |
 |---|---|
-| API 未配置 | 玩法按钮提示「请先在设置配置 API」，历法雅鉴仍可用 |
-| AI 回复非诗句/超时 | 飞花令判失败前给 1 次重试，超时 30s 提示 |
-| 输入为空/含 emoji | 轻提示，不进入请求 |
-| 角色无古风 tag | 仍可玩，仅提示「为角色加『古风』标签可获得更贴合口吻」 |
+| API 未配置 | 飞花/对联/雅言按钮置灰提示，本地款（信物/抽签）可玩 |
+| LLM 超时/报错 | 生成中骨架提示，失败 toast 重试，不落空消息 |
+| 非古风角色 | 不显示入口 |
+| 群聊 | 入口同样可用，口吻取当前主角色 |
 
-## 6. 验收标准
-- 桌面出现「古风雅集」精美图标（无 emoji），点击可进入应用
-- 四个玩法均可操作：飞花令有来回应答、抽签有动画与签文、文言雅译输出文言卡片、历法显示今日农历干支
-- build + dev 通过，不新增 tsc 错误
+## 7. 验收标准
+- 古风角色聊天「+」面板出现「雅玩」，现代角色不出现
+- 五款玩法均可操作并落「雅玩」卡片气泡，角色随后自然回复
+- 卡片精美（宣纸卡+朱砂印+矢量图形），全程无 emoji
+- build/dev 通过，chat-room 无新增 tsc 错误
 
-## 7. 本期不实现
-- 不改聊天气泡/不往 chat-room 加互动类型（热路径风险大，后续迭代）
-- 不做古风主题换肤、不动现有 UI
+## 8. 本期不实现
+- 不改聊天引擎的回复逻辑（角色自然接话靠现有 pendingGenerate 机制）
+- 不动现有红包/骰子等互动
