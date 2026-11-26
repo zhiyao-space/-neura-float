@@ -90,6 +90,8 @@ import { extractTextToolDirectiveText } from "@/lib/text-tool-protocol";
 import { emitChatPluginEvent, getChatPluginHookBus, runChatPluginTransform } from "@/lib/chat-plugin-hooks";
 import { CHAT_PLUGIN_TOAST_EVENT, getChatPluginRuntime } from "@/lib/chat-plugin-runtime";
 import { ChatPluginSlot } from "@/components/chat/chat-plugin-slot";
+import { GuFengPlayPanel } from "@/components/chat/gufeng-chat-play";
+import { buildGufengPlayLabel } from "@/lib/gufeng-data";
 import {
     createOrGetStorySession,
     hydrateStoryStorage,
@@ -198,6 +200,7 @@ const CHAT_VISUAL_MEDIA_TYPES = new Set([
     "quote",
     "media_file",
     "moment_share",
+    "gu_feng_play",
 ]);
 
 const WEIXIN_CLOUD_DELETE_TIMEOUT_MS = 15000;
@@ -244,6 +247,7 @@ const CHAT_MEDIA_BUBBLE_TYPES = new Set([
     "app_card",
     "media_file",
     "moment_share",
+    "gu_feng_play",
 ]);
 
 const STANDALONE_CARD_BUBBLE_STYLE = {
@@ -668,6 +672,8 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
     showStickerPanel: boolean;
     showPlusMenu: boolean;
     customPlusActions: RegisteredCustomAppChatPlusAction[];
+    showGufengPlayEntry: boolean;
+    onOpenGufengPlay: () => void;
     onClearQuote: () => void;
     onToggleOfflineMode: () => void;
     onClosePanels: () => void;
@@ -699,6 +705,8 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
     showStickerPanel,
     showPlusMenu,
     customPlusActions,
+    showGufengPlayEntry,
+    onOpenGufengPlay,
     onClearQuote,
     onToggleOfflineMode,
     onClosePanels,
@@ -787,6 +795,9 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
         { icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--c-text)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>, label: "位置", onClick: () => onOpenRichModal("location") },
         { icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--c-text)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /><line x1="8" y1="22" x2="16" y2="22" /></svg>, label: "语音条", onClick: () => onOpenRichModal("voice_msg") },
         { icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--c-text)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="15" x2="15" y2="15" /></svg>, label: "文件", onClick: () => onOpenRichModal("file_upload") },
+        ...(showGufengPlayEntry ? [{
+            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="var(--c-text)"><path d="M12,2C12.89,2 13.66,2.5 14.06,3.23C14.5,3.03 15,2.92 15.5,2.92C17.71,2.92 19.5,4.71 19.5,6.92C19.5,7.42 19.4,7.89 19.22,8.32C20.35,8.81 21.15,9.92 21.15,11.23C21.15,12.54 20.35,13.65 19.22,14.14C19.4,14.57 19.5,15.04 19.5,15.54C19.5,17.75 17.71,19.54 15.5,19.54C15,19.54 14.53,19.45 14.1,19.27C13.61,20.35 12.52,21.15 11.23,21.15C9.94,21.15 8.85,20.35 8.36,19.27C7.93,19.45 7.46,19.54 6.96,19.54C4.75,19.54 2.96,17.75 2.96,15.54C2.96,15.04 3.06,14.57 3.24,14.14C2.11,13.65 1.31,12.54 1.31,11.23C1.31,9.92 2.11,8.81 3.24,8.32C3.06,7.89 2.96,7.42 2.96,6.92C2.96,4.71 4.75,2.92 6.96,2.92C7.46,2.92 7.93,3.01 8.36,3.19C8.85,2.11 9.94,1.31 11.23,1.31L12,2Z" /></svg>, label: "雅玩", onClick: onOpenGufengPlay },
+        ] : []),
         ...customPlusActions.map(action => ({
             icon: action.appIconDataUrl
                 ? <span className="chat-plus-custom-app-icon" style={{ backgroundImage: `url(${action.appIconDataUrl})` }} aria-hidden="true" />
@@ -1185,6 +1196,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const [imageGenerationFailure, setImageGenerationFailure] = useState<string | null>(null);
     const [cloudDeletePending, setCloudDeletePending] = useState<{ count: number } | null>(null);
     const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const [showGufengPlay, setShowGufengPlay] = useState(false);
     const [customPlusActions, setCustomPlusActions] = useState<RegisteredCustomAppChatPlusAction[]>(() => loadCustomAppChatPlusActions());
     const [activeCustomChatPlus, setActiveCustomChatPlus] = useState<ActiveCustomChatPlus | null>(null);
     const [showSettings, setShowSettings] = useState(false);
@@ -6734,6 +6746,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 showStickerPanel={showStickerPanel}
                 showPlusMenu={showPlusMenu}
                 customPlusActions={customPlusActions}
+                showGufengPlayEntry={!!character && !session.isGroup && !!character.tags?.some(t => t.includes("古风") || t.includes("古代") || t.includes("武侠"))}
+                onOpenGufengPlay={() => { setShowPlusMenu(false); setShowGufengPlay(true); }}
                 onClearQuote={() => setQuotingMessage(null)}
                 onToggleOfflineMode={toggleOfflineMode}
                 onClosePanels={() => { setShowEmojiPanel(false); setShowStickerPanel(false); setShowPlusMenu(false); }}
@@ -6752,6 +6766,16 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 onSendSticker={(name, url) => { setShowStickerPanel(false); sendRichMessage("sticker", { label: name, stickerUrl: url }); }}
             />
             ))}
+            {showGufengPlay && (
+                <GuFengPlayPanel
+                    character={session.isGroup ? null : character}
+                    onClose={() => setShowGufengPlay(false)}
+                    onSend={(kind, data) => {
+                        setShowGufengPlay(false);
+                        sendRichMessage("gu_feng_play", { kind, ...data } as ChatMessage["mediaData"], buildGufengPlayLabel(kind, data));
+                    }}
+                />
+            )}
 
             {showConfirmMultiDelete && (
                 <ConfirmDialog

@@ -1,0 +1,277 @@
+/* gufeng-chat.css —— 聊天内「雅玩」弹层与结果卡片：宣纸米色+墨色+朱砂，零 emoji */
+
+.gfp-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 70;
+    background: rgba(30, 24, 16, 0.35);
+    display: flex;
+    align-items: flex-end;
+}
+
+.gfp-sheet {
+    width: 100%;
+    max-height: 72%;
+    overflow-y: auto;
+    background: #f3ecdd;
+    border-radius: 14px 14px 0 0;
+    border-top: 1px solid rgba(61, 50, 38, 0.2);
+    padding: 12px 14px 18px;
+    color: #3d3226;
+    box-shadow: 0 -6px 24px rgba(30, 24, 16, 0.18);
+}
+
+.gfp-sheet-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.gfp-sheet-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    flex: 1;
+}
+
+.gfp-mode-switch {
+    display: flex;
+    border: 1px solid rgba(61, 50, 38, 0.3);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.gfp-mode-tab {
+    padding: 4px 14px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    background: transparent;
+    border: none;
+    color: #3d3226;
+    cursor: pointer;
+}
+
+.gfp-mode-tab.active {
+    background: #3d3226;
+    color: #f3ecdd;
+}
+
+.gfp-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(61, 50, 38, 0.3);
+    background: transparent;
+    color: #3d3226;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.gfp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.gfp-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 6px;
+    border: 1px solid rgba(61, 50, 38, 0.22);
+    border-radius: 10px;
+    background: rgba(255, 251, 241, 0.9);
+    color: #a33f2f;
+    font-size: 12px;
+    letter-spacing: 2px;
+    cursor: pointer;
+}
+
+.gfp-entry:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.gfp-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.gfp-hint {
+    font-size: 13px;
+    color: #6d5c44;
+}
+
+.gfp-token-row,
+.gfp-gift-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gfp-token {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    border: 1px solid rgba(163, 63, 47, 0.5);
+    background: transparent;
+    color: #a33f2f;
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.gfp-gift {
+    flex: 1 1 28%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 6px;
+    border: 1px solid rgba(61, 50, 38, 0.22);
+    border-radius: 10px;
+    background: rgba(255, 251, 241, 0.9);
+    color: #a33f2f;
+    font-size: 13px;
+    letter-spacing: 2px;
+    cursor: pointer;
+}
+
+.gfp-card-line {
+    font-size: 17px;
+    letter-spacing: 2px;
+    padding: 10px 12px;
+    border: 1px dashed rgba(61, 50, 38, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 251, 241, 0.9);
+}
+
+.gfp-input {
+    width: 100%;
+    border: 1px solid rgba(61, 50, 38, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 251, 241, 0.9);
+    color: #3d3226;
+    padding: 9px 11px;
+    font-size: 14px;
+    outline: none;
+}
+
+.gfp-send {
+    align-self: flex-start;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #a33f2f;
+    color: #f7f1e3;
+    font-size: 14px;
+    letter-spacing: 3px;
+    cursor: pointer;
+}
+
+.gfp-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gfp-err {
+    font-size: 12px;
+    color: #a33f2f;
+}
+
+/* ── 结果气泡卡片 ── */
+.gfp-bubble {
+    background: #f7f1e3;
+    border: 1px solid rgba(61, 50, 38, 0.2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: #3d3226;
+    max-width: 260px;
+    box-shadow: 0 2px 8px rgba(61, 50, 38, 0.08);
+}
+
+.gfp-bubble.modern {
+    background: #eef1f4;
+    border-color: rgba(50, 60, 72, 0.22);
+    color: #323c48;
+}
+
+.gfp-bubble-kind {
+    display: flex;
+    gap: 10px;
+}
+
+.gfp-seal {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    background: #a33f2f;
+    color: #f7f1e3;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px rgba(247, 241, 227, 0.5);
+}
+
+.gfp-bubble-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.gfp-bubble-body.gift {
+    align-items: center;
+    text-align: center;
+    color: #a33f2f;
+}
+
+.gfp-bubble-title {
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: #8a7a60;
+}
+
+.gfp-bubble-verse {
+    font-size: 16px;
+    line-height: 1.9;
+    letter-spacing: 1px;
+    white-space: pre-wrap;
+}
+
+.gfp-bubble-verse.center {
+    text-align: center;
+}
+
+.gfp-bubble-verse .gfp-tag {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 4px;
+    background: #3d3226;
+    color: #f3ecdd;
+    font-size: 11px;
+    margin-right: 8px;
+}
+
+.gfp-bubble.modern .gfp-bubble-verse .gfp-tag {
+    background: #323c48;
+    color: #eef1f4;
+}
+
+.gfp-bubble-note {
+    font-size: 12px;
+    color: #6d5c44;
+    line-height: 1.7;
+    border-top: 1px dashed rgba(61, 50, 38, 0.25);
+    padding-top: 6px;
+}

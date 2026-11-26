@@ -139,6 +139,7 @@ export type ChatMessage = {
         | "system_instruction"
         | "group_admin_notice"
         | "media_file"
+        | "gu_feng_play"
         | `plugin:${string}`; // 聊天插件自定义消息类型（由注册该 kind 的插件渲染气泡）
     /**
      * 消息来源。call = 通话屏产生的消息（通话中的对话轮、用户从通话界面发的）。
