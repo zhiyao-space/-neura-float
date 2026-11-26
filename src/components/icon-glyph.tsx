@@ -40,7 +40,6 @@ import {
   mdiHammerWrench,
   mdiGlassCocktail,
   mdiStorefrontOutline,
-  mdiFlowerPoppy,
 } from "@mdi/js";
 
 type IconGlyphProps = {
