@@ -78,7 +78,6 @@ const MDI_PATHS: Record<IconId, string> = {
   characters: mdiAccount,
   dwelling: mdiHome,
   realitybridge: mdiBridge,
-  gufeng: mdiFlowerPoppy,
 };
 
 export function IconGlyph({ id, className }: IconGlyphProps) {

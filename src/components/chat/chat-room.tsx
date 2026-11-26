@@ -6746,7 +6746,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 showStickerPanel={showStickerPanel}
                 showPlusMenu={showPlusMenu}
                 customPlusActions={customPlusActions}
-                showGufengPlayEntry={!!character && !session.isGroup && !!character.tags?.some(t => t.includes("古风") || t.includes("古代") || t.includes("武侠"))}
+                showGufengPlayEntry={!!character && !session.isGroup}
                 onOpenGufengPlay={() => { setShowPlusMenu(false); setShowGufengPlay(true); }}
                 onClearQuote={() => setQuotingMessage(null)}
                 onToggleOfflineMode={toggleOfflineMode}
