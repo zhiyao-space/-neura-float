@@ -458,10 +458,25 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
             const book = books.find(b => b.id === activeBookId);
             if (!book) return;
             try {
-                const parsed = JSON.parse(event.target?.result as string);
-                const items = Array.isArray(parsed) ? parsed : [parsed];
-                if (mode.mode === "replace") replaceImportedEntry(book, mode.uid, items[0]);
-                else appendImportedEntries(book, items);
+                const text = event.target?.result as string;
+                const lowerName = file.name.toLowerCase();
+                if (lowerName.endsWith(".txt") || lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+                    const wb = lowerName.endsWith(".txt")
+                        ? parseWorldBookFromTxt(text, file.name)
+                        : parseWorldBookFromHtml(text, file.name);
+                    if (!wb || wb.entries.length === 0) {
+                        setImportError("未从文件中识别出任何条目。");
+                        return;
+                    }
+                    if (mode.mode === "replace") replaceImportedEntry(book, mode.uid, wb.entries[0]);
+                    else appendImportedEntries(book, wb.entries);
+                    setImportNotice(`已从 ${file.name} 导入 ${wb.entries.length} 个条目。`);
+                } else {
+                    const parsed = JSON.parse(text);
+                    const items = Array.isArray(parsed) ? parsed : [parsed];
+                    if (mode.mode === "replace") replaceImportedEntry(book, mode.uid, items[0]);
+                    else appendImportedEntries(book, items);
+                }
             } catch {
                 setImportError("无法解析条目文件，格式不正确。");
             }
@@ -486,7 +501,7 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
     return (
         <div ref={wbContainerRef} className="flex flex-col gap-5 h-full">
             <input type="file" accept=".json,.txt,.html,.htm" className="hidden" ref={fileInputRef} onChange={handleImport} />
-            <input type="file" accept=".json" className="hidden" ref={entryFileInputRef} onChange={handleEntryImportFile} />
+            <input type="file" accept=".json,.txt,.html,.htm" className="hidden" ref={entryFileInputRef} onChange={handleEntryImportFile} />
             {viewMode === "list" ? (
                 <>
                     <div className="flex items-center">
@@ -933,7 +948,7 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
                                 entryFileInputRef.current?.click();
                             }}
                         >
-                            <Upload size={16} /> 从 JSON 文件导入
+                            <Upload size={16} /> 从文件导入（JSON / TXT / HTML）
                         </button>
                     </div>
                 </BottomSheet>
