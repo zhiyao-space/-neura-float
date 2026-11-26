@@ -1,51 +1,61 @@
 # 需求文档
 
 ## 1. 改动目标
-用户已确认：古风小功能以聊天界面「+」功能弹窗里的「雅玩」模块为准（已上线），独立桌面 App「古风雅集」不再保留，顶部返回按钮问题不再处理。本轮任务是**把上一轮已动手的桌面 App 下线工作收尾干净**：上一轮在移除桌面注册与装配时，`desktop-shell.tsx` 的 mixology 分支丢失了一个闭合大括号，当前代码存在语法破损，必须修复并通过构建。
+用户要求：聊天「雅玩」古风页签里不要全是小游戏，还要有**古人用的器物/物品**（如佩剑、铜钱这类电视剧里常见的东西），数量越多越好。目标：在古风页签新增一个「器物阁」模块——点击任一器物，以精美卡片气泡发送到聊天里（带器物矢量图形 + 品名 + 铭文/用途描述），纯本地数据、无需 API，随点随发。
 
-## 2. 现状 vs 目标
-- 现状：
-  - `src/lib/desktop-config.ts`：IconId、ICONS、PAGE_3_DEFAULT 中的 gufeng 已移除（已完成）
-  - `src/components/icon-glyph.tsx`：`gufeng: mdiFlowerPoppy` 已移除，但文件顶部 `mdiFlowerPoppy` 的 import 仍在（第 43 行附近），属未使用残留
-  - `src/components/desktop-shell.tsx`：GuFengApp import 与 gufeng 分支已移除，但**误删了 mixology 分支的闭合 `}`**（约 L4274-4276，`return <MixologyApp .../>;` 后直接跟下一个 if，语法错误）
-  - `src/components/chat/chat-room.tsx`：雅玩入口已改为所有单聊角色可见（`showGufengPlayEntry={!!character && !session.isGroup}`）
-  - `src/components/gufeng/gufeng-app.tsx` 与 `src/gufeng.css`：已无任何引用，属死代码
-- 目标：桌面不再有古风雅集 App；语法修复、残留 import 清理、死文件删除；聊天内雅玩模块保持现状不动。
+## 2. 已知事实（无需再探索，接线点均已确认）
+- 弹层与气泡组件：`/home/project/src/components/chat/gufeng-chat-play.tsx`（284 行）——`GuFengPlayPanel`（古风/现代双页签，`view` 状态机 menu/feihua/gift/couplet/elegant + LLM 调用）与 `GuFengPlayBubble`（按 `mediaData.kind` 分支渲染）
+- 数据层：`/home/project/src/lib/gufeng-data.ts`（117 行）——已有 `GUFENG_GIFTS`（信物：{name, icon(mdi path), message}）可作为器物的直接参照模板；`buildGufengPlayLabel(kind, data)` 需同步加分支
+- 样式：`/home/project/src/gufeng-chat.css`——`.gfp-gift-row` / `.gfp-gift` 网格与 `.gfp-bubble-body.gift` 卡片样式可直接复用于器物
+- 聊天接线：`chat-room.tsx` 两个 Set 已含 `"gu_feng_play"`、mediaType union 已加、message-bubble.tsx 已有 case 分发——**本轮无需动这三个文件**
+-mdi 图标用内联 SVG path（GfpIcon 组件，viewBox 0 0 24 24）
 
-## 3. 改动点说明
-1. 修复 `desktop-shell.tsx`：为 mixology 分支补回闭合 `}`（恢复为 `return <MixologyApp onClose={...} />;` 后换行 `}`）
-2. 清理 `icon-glyph.tsx` 顶部未使用的 `mdiFlowerPoppy` import
-3. 删除死文件 `src/components/gufeng/gufeng-app.tsx`（整目录若无他文件）与 `src/gufeng.css`
-4. 全局确认无其他 `gufeng-app` / `GuFengApp` / `gufeng.css` 引用残留
+## 3. 方案设计
+新增「器物阁」：古风页签网格中第 6 个入口（现有 5 个：飞花传令/月老签/投我木桃/对联求对/称谓雅鉴），点开进入器物 12 件的宫格选择页，点击即发送「器物卡」气泡。
 
-## 4. 影响面与调用链
-```
-桌面图标注册(desktop-config.ts) → 图标渲染(icon-glyph.tsx) → 桌面装配(desktop-shell.tsx)
-                                                      ↑ 本轮修复点（语法破损）
-聊天「+」面板(chat-room.tsx) → 雅玩面板(gufeng-chat-play.tsx) → gufeng-data.ts / gufeng-chat.css 【不动】
-```
-删除的 gufeng-app.tsx 仅被已移除的 desktop-shell 分支引用，无其他调用方；gufeng-data.ts 同时服务聊天雅玩，**保留**。
+**12 件器物清单**（每件含 name / icon / inscription 铭文一句）：
+1. 佩剑 —— 「剑者，心之刃也，非快意恩仇不可轻出。」
+2. 铜钱 —— 「外圆内方，通行天下；一钱虽小，可问穷通。」
+3. 罗盘 —— 「天南地北，皆归一针。」
+4. 铜镜 —— 「以铜为镜，可正衣冠；以卿为镜，可照我心。」
+5. 卷轴 —— 「一卷在手，江山万里。」
+6. 酒壶 —— 「壶中日月长，杯里乾坤大。」
+7. 香炉 —— 「一炉沉水香，静候知音来。」
+8. 油纸伞 —— 「一伞烟雨，半世浮生。」
+9. 灯笼 —— 「一盏灯火，照夜归人。」
+10. 木笛 —— 「笛声三弄，梅心惊破。」
+11. 锦囊 —— 「锦囊妙计，危时方启。」
+12. 令牌 —— 「见令如见人，持令行四方。」
 
-## 5. 回归与兼容风险
-| 风险点 | 是否破坏现有行为 | 策略 | 需回归验证 |
-|---|---|---|---|
-| mixology 分支缺 `}` | 是（编译失败） | 补回闭合括号 | build 通过 |
-| 桌面已存 kv 里的 gufeng 图标布局数据 | 可能渲染出未知 id | IconGlyph 对未知 id 已有兜底，无 placeholder 配置则不渲染 | 桌面页 3 正常显示 |
-| 聊天雅玩模块 | 否 | 不改动 | 「+」面板雅玩可开 |
+图标用 mdi path（sword/cash/compass/mirror→用近似矢量/scroll-text/glass-cocktail 类比/fire/umbrella/lamp/flute/purse/shield-key 等近似图形），全部内联字符串，与信物一致的风格。
 
-## 6. 涉及文件定位
-- `/home/project/src/components/desktop-shell.tsx`（补 `}`，约 L4274-4277）
-- `/home/project/src/components/icon-glyph.tsx`（删 mdiFlowerPoppy import，L43 附近）
-- 删除：`/home/project/src/components/gufeng/gufeng-app.tsx`、`/home/project/src/gufeng.css`
+## 4. 实施步骤
+1. `gufeng-data.ts`：新增 `GuFengTool` 类型与 `GUFENG_TOOLS`（12 项）；`buildGufengPlayLabel` 加 `case "tool"`（返回 `[器物阁·品名] 铭文`）
+2. `gufeng-chat-play.tsx`：
+   - `PlayKind` 联合加 `"tool"`；`view` 联合加 `"tools"`
+   - 古风菜单加第 6 项「器物阁」（icon 用卷轴/匣类 path）
+   - 新增 `view === "tools"` 渲染：复用 `.gfp-gift-row`/`.gfp-gift` 样式的宫格，点击 `onSend("tool", { toolName, toolIcon, inscription }, ...)`
+   - `GuFengPlayBubble` 加 `kind === "tool"` 分支（复用 `.gfp-bubble-body.gift` 居中卡片：大图形 + 品名 + 铭文）
+3. CSS 无需新增（全部复用信物样式）；如需微调仅加 `.gfp-bubble-body.tool` 别名类
+4. tsc 自查 → build → dev → 推送 GitHub
 
-## 7. 验收标准
-- [ ] `npx tsc --noEmit` 无本次改动引入的新错误
-- [ ] `pnpm run build` 通过
-- [ ] `pnpm run dev` 启动正常，桌面第三页无「古风雅集」图标、独家特调 App 可正常打开
-- [ ] 聊天「+」面板「雅玩」模块打开正常（古风/现代页签）
-- [ ] 改动推送 GitHub
+## 5. 受影响文件清单
+- `/home/project/src/lib/gufeng-data.ts`（+器物库 + label 分支）
+- `/home/project/src/components/chat/gufeng-chat-play.tsx`（+入口 +选择页 +气泡分支）
+- （可选微调）`/home/project/src/gufeng-chat.css`
+- **不动**：chat-room.tsx、message-bubble.tsx、chat-storage.ts（管道已通）
+
+## 6. 验收标准
+- [ ] 古风页签出现「器物阁」入口，点开为 12 件器物宫格
+- [ ] 点击任一器物，聊天流出现器物卡气泡（图形+品名+铭文，宣纸卡片带朱砂印）
+- [ ] 全程无需 API 配置即可用
+- [ ] build 通过、dev 正常、已推送
+
+## 7. 风险评估
+- mdi path 近似图形可能个别不够形似 → 视觉验收时逐一检查，必要时微调 path
+- 古风页签菜单增至 6 项（3 列 grid 两行）→ 布局无压力
+- 其余玩法不受影响（只加分支不改动既有 kind）
 
 ## 8. 不改动范围
-- 聊天雅玩面板功能、样式与卡片气泡逻辑一律不动
-- gufeng-data.ts、gufeng-chat.css、message-bubble.tsx 不动
-- 不处理旧版返回按钮问题（用户明确放弃）
+- 现有五款玩法与现代页签逻辑不动
+- 聊天接线链路（chat-room/message-bubble/chat-storage）不动
