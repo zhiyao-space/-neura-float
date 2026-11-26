@@ -64,7 +64,44 @@ export function buildGufengPersona(name: string, desc: string, tags: string[]): 
 export const GUFENG_YI = ["习字", "烹茶", "抚琴", "登高", "访友", "读书", "侍花", "焚香", "静坐", "吟诗", "泛舟", "对弈"];
 export const GUFENG_JI = ["嗔怒", "贪睡", "妄语", "急躁", "暴饮", "争执", "夜游", "久视", "多虑", "轻诺", "挥霍", "恋栈"];
 
-const STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+// ── 聊天内古风雅玩（chat 内嵌玩法）──
+
+export type GuFengGift = { name: string; icon: string; message: string };
+
+/** 信物库：icon 为 @mdi/js path */
+export const GUFENG_GIFTS: GuFengGift[] = [
+    { name: "玉佩", icon: "M21,1.38v19.24L2,11.98L21,1.38M21,0L2,10.62v2.76L21,24V0Z", message: "解我罗衣赠君佩，愿君温润如玉，莫失莫忘。" },
+    { name: "香囊", icon: "M12,2A3,3 0 0,1 15,5V7A3,3 0 0,1 12,10A3,3 0 0,1 9,7V5A3,3 0 0,1 12,2M7,10H17L19,22H5L7,10Z", message: "锦囊盛得百草香，随身入怀，念念如晤。" },
+    { name: "折扇", icon: "M20.44,3.56C19.19,2.31 16.56,3.06 14.44,5.19L5.19,14.44C3.06,16.56 2.31,19.19 3.56,20.44C4.81,21.69 7.44,20.94 9.56,18.81L18.81,9.56C20.94,7.44 21.69,4.81 20.44,3.56Z", message: "一柄折扇两面临着风，开合之间，皆是君子气。" },
+    { name: "梅花", icon: "M12,2C12.89,2 13.66,2.5 14.06,3.23C14.5,3.03 15,2.92 15.5,2.92C17.71,2.92 19.5,4.71 19.5,6.92C19.5,7.42 19.4,7.89 19.22,8.32C20.35,8.81 21.15,9.92 21.15,11.23C21.15,12.54 20.35,13.65 19.22,14.14C19.4,14.57 19.5,15.04 19.5,15.54C19.5,17.75 17.71,19.54 15.5,19.54C15,19.54 14.53,19.45 14.1,19.27C13.61,20.35 12.52,21.15 11.23,21.15C9.94,21.15 8.85,20.35 8.36,19.27C7.93,19.45 7.46,19.54 6.96,19.54C4.75,19.54 2.96,17.75 2.96,15.54C2.96,15.04 3.06,14.57 3.24,14.14C2.11,13.65 1.31,12.54 1.31,11.23C1.31,9.92 2.11,8.81 3.24,8.32C3.06,7.89 2.96,7.42 2.96,6.92C2.96,4.71 4.75,2.92 6.96,2.92C7.46,2.92 7.93,3.01 8.36,3.19C8.85,2.11 9.94,1.31 11.23,1.31L12,2Z", message: "折得一枝寒梅赠，愿君清骨如花，岁岁平安。" },
+    { name: "长明灯", icon: "M12,2A7,7 0 0,0 5,9C5,12.87 8.13,16 12,16A7,7 0 0,0 19,9A7,7 0 0,0 12,2M12,4A5,5 0 0,1 17,9C17,11.76 14.76,14 12,14A5,5 0 0,1 7,9A5,5 0 0,1 12,4M8,17H16V19H8V17M9,20H15V22H9V20Z", message: "一盏长明伴君侧，夜路有光，归途有候。" },
+];
+
+export const COUPLET_SYSTEM_PROMPT = (persona: string) =>
+    `你是古风对句雅士${persona ? `（口吻参考：${persona}）` : ""}。用户请你出上联。\n` +
+    `只输出一句上联（七言或五言，不加标点以外的任何文字），严格对仗工整、平仄和谐。严禁 emoji。`;
+
+export const COUPLET_MATCH_PROMPT = (upper: string, lower: string) =>
+    `上联：「${upper}」用户对的下联：「${lower}」。\n请只回答「工」或「宽」一个字评价对仗工整度，不要输出其他内容。`;
+
+export const ELEGANT_SYSTEM_PROMPT = (persona: string) =>
+    `你是古风言辞雅士${persona ? `（口吻参考：${persona}）` : ""}。把用户给的现代白话句子改写成一句古风雅言。\n` +
+    `只输出改写后的雅言一句，20字以内，保留原意，措辞古雅。严禁 emoji。`;
+
+export const CHAT_FEIHUA_SYSTEM_PROMPT = (tokenChar: string, persona: string) =>
+    `你正在与友人行飞花令，令字为「${tokenChar}」。请只输出一句含「${tokenChar}」字的古诗词原句（唐宋诗词为准），不加任何解释。${persona ? `可略带此人风致：${persona}` : ""}严禁 emoji。`;
+
+export function buildGufengPlayLabel(kind: string, data: Record<string, unknown>): string {
+    switch (kind) {
+        case "verse": return `[飞花令·${data.tokenChar}] ${data.verse || ""}`;
+        case "sign": return `[月老签·${data.level}]`;
+        case "gift": return `[赠信物·${data.giftName}]`;
+        case "couplet": return `[对联] 上联：${data.upper}｜下联：${data.lower}`;
+        case "elegant": return `[雅言] ${data.elegant || ""}`;
+        default: return "[古风雅玩]";
+    }
+}
+
 const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
 const ZODIAC = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"];
 

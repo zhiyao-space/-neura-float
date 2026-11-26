@@ -1,32 +1,26 @@
 [
   {
-    "content": "桌面注册 gufeng 图标+字形",
+    "content": "gufeng-data 扩展：信物/对联/雅言",
     "priority": "high",
     "skills": [],
-    "status": "completed"
+    "status": "in_progress"
   },
   {
-    "content": "gufeng-data.ts 签文/提示词库",
+    "content": "gufeng-chat-play.tsx 弹层组件+css",
     "priority": "high",
     "skills": [],
-    "status": "completed"
+    "status": "pending"
   },
   {
-    "content": "gufeng-app.tsx 四个玩法+gufeng.css",
+    "content": "chat-room 接线：入口+Set+气泡分支",
     "priority": "high",
     "skills": [],
-    "status": "completed"
-  },
-  {
-    "content": "MainApp 装配路由",
-    "priority": "high",
-    "skills": [],
-    "status": "completed"
+    "status": "pending"
   },
   {
     "content": "build+dev+推送",
     "priority": "high",
     "skills": [],
-    "status": "completed"
+    "status": "pending"
   }
 ]
