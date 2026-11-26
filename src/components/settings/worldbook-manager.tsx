@@ -11,7 +11,7 @@ import {
     UNSUPPORTED_IMPORT_FORMAT,
 } from "@/lib/settings-storage";
 import { loadCharacters } from "@/lib/character-storage";
-import { parseWorldBookFromHtml, parseWorldBookFromTxt } from "@/lib/worldbook-import-parser";
+import { parseWorldBookFromDocx, parseWorldBookFromHtml, parseWorldBookFromTxt } from "@/lib/worldbook-import-parser";
 import type { WorldBookConfig, WorldBookEntry } from "@/lib/settings-types";
 import { SettingsContext } from "../phone-settings-app";
 import { BottomSheet, ConfirmDialog, TextExpandModal } from "@/components/ui/modal";
@@ -291,12 +291,37 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        const lowerName = file.name.toLowerCase();
+
+        // Word 文档（.docx）为二进制：读 ArrayBuffer 走 mammoth 解析
+        if (lowerName.endsWith(".docx")) {
+            const bufReader = new FileReader();
+            bufReader.onload = async (ev) => {
+                try {
+                    const parsed = await parseWorldBookFromDocx(ev.target?.result as ArrayBuffer, file.name);
+                    if (parsed && parsed.entries.length > 0) {
+                        const clipped = parsed.entries.length >= 300;
+                        persist([parsed, ...books]);
+                        setActiveBookId(parsed.id);
+                        setImportNotice(`已从 ${file.name} 导入 ${parsed.entries.length} 个条目${clipped ? "（已达上限，超出部分被截断）" : ""}。`);
+                    } else {
+                        setImportError("未从 Word 文档中识别出任何条目（建议文档内使用标题样式分节）。");
+                    }
+                } catch (err) {
+                    console.error("[worldbook-import] docx 解析失败:", file.name, err);
+                    setImportError("无法解析 Word 文档（.doc 旧版请先另存为 .docx）。");
+                }
+            };
+            bufReader.onerror = () => setImportError("读取文件失败。");
+            bufReader.readAsArrayBuffer(file);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
                 const text = event.target?.result as string;
-                const lowerName = file.name.toLowerCase();
                 const parsed = lowerName.endsWith(".txt")
                     ? parseWorldBookFromTxt(text, file.name)
                     : lowerName.endsWith(".html") || lowerName.endsWith(".htm")
@@ -453,6 +478,33 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
         entryImportModeRef.current = null;
         if (entryFileInputRef.current) entryFileInputRef.current.value = "";
         if (!file || !mode) return;
+        const lowerName0 = file.name.toLowerCase();
+
+        // Word 文档（.docx）：二进制 ArrayBuffer 走 mammoth 解析
+        if (lowerName0.endsWith(".docx")) {
+            const bufReader = new FileReader();
+            bufReader.onload = async (ev) => {
+                const book = books.find(b => b.id === activeBookId);
+                if (!book) return;
+                try {
+                    const wb = await parseWorldBookFromDocx(ev.target?.result as ArrayBuffer, file.name);
+                    if (!wb || wb.entries.length === 0) {
+                        setImportError("未从 Word 文档中识别出任何条目（建议文档内使用标题样式分节）。");
+                        return;
+                    }
+                    if (mode.mode === "replace") replaceImportedEntry(book, mode.uid, wb.entries[0]);
+                    else appendImportedEntries(book, wb.entries);
+                    setImportNotice(`已从 ${file.name} 导入 ${wb.entries.length} 个条目。`);
+                } catch (err) {
+                    console.error("[worldbook-import] docx 条目解析失败:", file.name, err);
+                    setImportError("无法解析 Word 文档（.doc 旧版请先另存为 .docx）。");
+                }
+            };
+            bufReader.onerror = () => setImportError("读取文件失败。");
+            bufReader.readAsArrayBuffer(file);
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const book = books.find(b => b.id === activeBookId);
@@ -500,8 +552,8 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
 
     return (
         <div ref={wbContainerRef} className="flex flex-col gap-5 h-full">
-            <input type="file" accept=".json,.txt,.html,.htm" className="hidden" ref={fileInputRef} onChange={handleImport} />
-            <input type="file" accept=".json,.txt,.html,.htm" className="hidden" ref={entryFileInputRef} onChange={handleEntryImportFile} />
+            <input type="file" accept=".json,.txt,.html,.htm,.docx" className="hidden" ref={fileInputRef} onChange={handleImport} />
+            <input type="file" accept=".json,.txt,.html,.htm,.docx" className="hidden" ref={entryFileInputRef} onChange={handleEntryImportFile} />
             {viewMode === "list" ? (
                 <>
                     <div className="flex items-center">
@@ -948,7 +1000,7 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
                                 entryFileInputRef.current?.click();
                             }}
                         >
-                            <Upload size={16} /> 从文件导入（JSON / TXT / HTML）
+                            <Upload size={16} /> 从文件导入（JSON / TXT / HTML / Word）
                         </button>
                     </div>
                 </BottomSheet>

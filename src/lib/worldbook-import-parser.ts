@@ -28,7 +28,7 @@ function makeEntry(comment: string, content: string, key: string, order: number)
 }
 
 function stripExt(fileName: string): string {
-    return fileName.replace(/\.(txt|html?|md)$/i, "").trim() || "导入的世界书";
+    return fileName.replace(/\.(txt|html?|md|docx?)$/i, "").trim() || "导入的世界书";
 }
 
 // 强特征标题行：第X章/回/卷/节/幕、Chapter X、【XXX】、## 标题、一、二、等序号标题
@@ -95,7 +95,7 @@ export function parseWorldBookFromHtml(text: string, fileName: string): WorldBoo
     const bookName = doc.querySelector("title")?.textContent?.trim() || stripExt(fileName);
 
     const blocks: { comment: string; content: string }[] = [];
-    const headings = Array.from(doc.querySelectorAll("h1, h2, h3"));
+    const headings = Array.from(doc.querySelectorAll("h1, h2, h3, h4, h5, h6"));
     if (headings.length > 0) {
         headings.forEach((h, idx) => {
             const title = (h.textContent || "").trim();
@@ -137,4 +137,22 @@ export function parseWorldBookFromHtml(text: string, fileName: string): WorldBoo
     const wb = createWorldBook(bookName);
     wb.entries = blocks.slice(0, MAX_ENTRIES).map((b, i) => makeEntry(b.comment, b.content, b.comment, i));
     return wb;
+}
+
+/** Word 文档（.docx）解析：用 mammoth 转 HTML 后复用 HTML 解析逻辑。 */
+export async function parseWorldBookFromDocx(buffer: ArrayBuffer, fileName: string): Promise<WorldBookConfig | null> {
+    const mammoth = await import("mammoth");
+    const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+    const html = result?.value || "";
+    if (!html.trim()) return null;
+    // mammoth 输出 h1-h6/p/ul：先复用 HTML 解析，标题层级兜底补 h1
+    const wb = parseWorldBookFromHtml(html, fileName);
+    if (wb) return wb;
+    // 兜底：纯文本抽取
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const bodyText = squeezeBlank(doc.body?.textContent || "");
+    if (!bodyText) return null;
+    const fallback = createWorldBook(stripExt(fileName));
+    fallback.entries = [makeEntry(stripExt(fileName), bodyText, stripExt(fileName), 0)];
+    return fallback;
 }
