@@ -11,6 +11,7 @@ import {
     UNSUPPORTED_IMPORT_FORMAT,
 } from "@/lib/settings-storage";
 import { loadCharacters } from "@/lib/character-storage";
+import { parseWorldBookFromHtml, parseWorldBookFromTxt } from "@/lib/worldbook-import-parser";
 import type { WorldBookConfig, WorldBookEntry } from "@/lib/settings-types";
 import { SettingsContext } from "../phone-settings-app";
 import { BottomSheet, ConfirmDialog, TextExpandModal } from "@/components/ui/modal";
@@ -26,6 +27,7 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
     const [isLoaded, setIsLoaded] = useState(false);
     const [expandUid, setExpandUid] = useState<string | null>(null);
     const [importError, setImportError] = useState<string | null>(null);
+    const [importNotice, setImportNotice] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -294,10 +296,21 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
         reader.onload = (event) => {
             try {
                 const text = event.target?.result as string;
-                const parsed = parseWorldBookFromJson(text);
+                const lowerName = file.name.toLowerCase();
+                const parsed = lowerName.endsWith(".txt")
+                    ? parseWorldBookFromTxt(text, file.name)
+                    : lowerName.endsWith(".html") || lowerName.endsWith(".htm")
+                        ? parseWorldBookFromHtml(text, file.name)
+                        : parseWorldBookFromJson(text);
                 if (parsed) {
+                    if (parsed.entries.length === 0) {
+                        setImportError("未从文件中识别出任何条目。");
+                        return;
+                    }
+                    const clipped = parsed.entries.length >= 300;
                     persist([parsed, ...books]);
                     setActiveBookId(parsed.id);
+                    setImportNotice(`已从 ${file.name} 导入 ${parsed.entries.length} 个条目${clipped ? "（已达上限，超出部分被截断）" : ""}。`);
                 } else {
                     setImportError("无法解析世界书文件，格式不正确。");
                 }
@@ -472,7 +485,7 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
 
     return (
         <div ref={wbContainerRef} className="flex flex-col gap-5 h-full">
-            <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImport} />
+            <input type="file" accept=".json,.txt,.html,.htm" className="hidden" ref={fileInputRef} onChange={handleImport} />
             <input type="file" accept=".json" className="hidden" ref={entryFileInputRef} onChange={handleEntryImportFile} />
             {viewMode === "list" ? (
                 <>
@@ -884,6 +897,17 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
                     cancelLabel=""
                     onConfirm={() => setImportError(null)}
                     onCancel={() => setImportError(null)}
+                />
+            )}
+
+            {importNotice && (
+                <ConfirmDialog
+                    title="导入成功"
+                    message={importNotice}
+                    confirmLabel="好的"
+                    cancelLabel=""
+                    onConfirm={() => setImportNotice(null)}
+                    onCancel={() => setImportNotice(null)}
                 />
             )}
 

@@ -1,32 +1,20 @@
 [
   {
-    "content": "类型/存储：插图设置字段",
+    "content": "新建 worldbook-import-parser.ts（TXT/HTML 解析）",
     "priority": "high",
     "skills": [],
-    "status": "completed"
+    "status": "in_progress"
   },
   {
-    "content": "指令层：写模式插图规则",
+    "content": "worldbook-manager 接线：accept+分发+提示",
     "priority": "high",
     "skills": [],
-    "status": "completed"
+    "status": "pending"
   },
   {
-    "content": "服务层：插图引擎 lib/cocreate-illustration.ts",
+    "content": "build+dev+推送",
     "priority": "high",
     "skills": [],
-    "status": "completed"
-  },
-  {
-    "content": "UI：消息流/阅读器插图渲染+设置开关+挂接",
-    "priority": "high",
-    "skills": [],
-    "status": "completed"
-  },
-  {
-    "content": "build+dev+截图+推送",
-    "priority": "high",
-    "skills": [],
-    "status": "completed"
+    "status": "pending"
   }
 ]

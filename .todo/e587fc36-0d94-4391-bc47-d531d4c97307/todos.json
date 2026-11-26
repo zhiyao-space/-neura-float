@@ -1,0 +1,20 @@
+[
+  {
+    "content": "新建 worldbook-import-parser.ts（TXT/HTML 解析）",
+    "priority": "high",
+    "skills": [],
+    "status": "in_progress"
+  },
+  {
+    "content": "worldbook-manager 接线：accept+分发+提示",
+    "priority": "high",
+    "skills": [],
+    "status": "pending"
+  },
+  {
+    "content": "build+dev+推送",
+    "priority": "high",
+    "skills": [],
+    "status": "pending"
+  }
+]
