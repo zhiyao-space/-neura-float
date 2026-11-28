@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3015 --host 0.0.0.0 --strictPort",
-    "build": "vite build",
+    "build": "RAYON_NUM_THREADS=2 GOMAXPROCS=2 NODE_OPTIONS=--max-old-space-size=2048 vite build",
     "preview": "vite preview --port 3015 --host 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },

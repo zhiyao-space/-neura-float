@@ -32,3 +32,6 @@
 - 预览报错的 stack 是编译产物坐标而非源码坐标：curl dev 服务器 `/src/components/xxx.tsx` 抓转换后 JS，按 stack 行号直查真实出错语句
 - `.catch(() => undefined)` 会把 undefined 写入 React state，下游 useMemo `.length` 崩溃 → CatchBoundary 白屏；Promise 链的 catch 必须回退安全默认值（空数组等），useMemo 消费外列表时也应 Array.isArray 兜底
 - read-browser-screenshot 可能持续返回 preview_busy / browser-use 未返回可用截图（平台通道问题），此时用 read-browser-logs 对比崩溃时间戳（修复后无新 TypeError 时间戳 + curl 确认 dev 服务器已提供修复代码）即可作为运行时验证证据
+
+## What Didn't Work
+- ❌ 发布通道 `vite build`（默认线程/堆配置）在 "rendering chunks" 阶段被 OOM 杀（ELIFECYCLE exit 137，8.5K 模块）→ package.json build 脚本固化 `RAYON_NUM_THREADS=2 GOMAXPROCS=2 NODE_OPTIONS=--max-old-space-size=2048 vite build`（限制 rolldown rayon 与 esbuild 并行度，实测 2048MB 堆 + 2 线程本地 18s 通过），发布前不要再手改回默认
