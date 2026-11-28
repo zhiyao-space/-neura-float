@@ -108,8 +108,8 @@ export type StoryPreviewResult = {
 const STORY_ILLUSTRATION_PROMPT = `# 剧情配图（必须遵守）
 每次回复都必须在正文的合适位置（场景转换处或回复末尾）单独一行输出恰好 1 个插图标签，格式严格为：[插图:一句话画面描述]
 - 这是强制要求，任何回复都不能省略插图标签
-- 描述用一句 10-30 字的画面语言，突出场景、人物动作与氛围（如"雨夜街边路灯昏黄，少年笑睨着拽住他衣角的人"）
-- 描述必须是可视画面，不要写内心活动或抽象概念
+- 标签内的画面描述必须使用英文 danbooru tag 风格（逗号分隔的英文短语），因为生图引擎只识别英文提示词，中文会被过滤导致生成失败；例如 [插图:rainy night street, dim streetlight, tall young man in dark hoodie smirking over his shoulder, petite figure clutching his sleeve, cinematic]
+- 描述必须是可视画面（场景、人物、动作、光线、氛围），不要写内心活动或抽象概念，不要出现任何中文字符
 - 插图标签只是画面标记，不要在对白或旁白里解释它`;
 
 function escapeTagName(tag: string): string {
