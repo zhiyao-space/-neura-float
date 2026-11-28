@@ -114,7 +114,7 @@ import {
 } from "@/lib/story-illustration";
 import { updateStoryMessageIllustration } from "@/lib/story-storage";
 
-/** 剧情配图卡片：mediaRef → dataUrl 加载、生成中骨架、失败占位+重试。 */
+/** 剧情配图卡片：mediaRef → dataUrl 加载、手动生成按钮、生成进度条、失败占位+重试。 */
 function StoryIllustrationCard({
   desc,
   mediaRef,
@@ -122,10 +122,13 @@ function StoryIllustrationCard({
 }: {
   desc: string;
   mediaRef: string | null;
-  onRetry?: (desc: string) => void;
+  onRetry?: (desc: string) => boolean | Promise<boolean>;
 }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+
   useEffect(() => {
     let alive = true;
     setFailed(false);
@@ -141,33 +144,64 @@ function StoryIllustrationCard({
     return () => { alive = false; };
   }, [mediaRef]);
 
+  const startGenerate = () => {
+    if (generating) return;
+    setGenerating(true);
+    setFailed(false);
+    setProgress(8);
+    // 进度条：前段快速爬升到 85%，等待真实生图返回；成功后由 mediaRef 变化触发图片加载。
+    const timer = window.setInterval(() => {
+      setProgress((value) => (value < 85 ? value + Math.max(1, Math.round((90 - value) / 12)) : value));
+    }, 600);
+    Promise.resolve(onRetry?.(desc))
+      .then((ok) => {
+        if (!ok) setFailed(true);
+      })
+      .catch(() => setFailed(true))
+      .finally(() => {
+        window.clearInterval(timer);
+        setProgress(100);
+        window.setTimeout(() => {
+          setGenerating(false);
+          setProgress(0);
+        }, 400);
+      });
+  };
+
   return (
     <figure className={`story-illustration-card${dataUrl ? " story-illustration-card-ready" : ""}`}>
       {dataUrl ? (
         <img src={dataUrl} alt={desc} loading="lazy" />
       ) : failed ? (
         <div className="story-illustration-fallback">
-          <span className="story-illustration-fallback-label">配图生成失败</span>
+          <span className="story-illustration-fallback-label">配图生成失败，请检查生图 API 配置</span>
           <button
             type="button"
             className="story-illustration-retry"
-            onClick={(event) => { event.stopPropagation(); setFailed(false); onRetry?.(desc); }}
+            onClick={(event) => { event.stopPropagation(); startGenerate(); }}
           >
             重新生成
           </button>
         </div>
+      ) : generating ? (
+        <div className="story-illustration-skeleton">
+          <span className="story-illustration-skeleton-label">配图生成中 {progress}%</span>
+          <div className="story-illustration-progress">
+            <div className="story-illustration-progress-bar" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
       ) : (
         <div className="story-illustration-skeleton">
           <span className="story-illustration-skeleton-label">
-            {mediaRef ? "配图加载中…" : "配图生成中…"}
+            {mediaRef ? "配图加载中…" : "本条剧情暂无配图"}
           </span>
           {!mediaRef && onRetry && (
             <button
               type="button"
               className="story-illustration-retry"
-              onClick={(event) => { event.stopPropagation(); onRetry(desc); }}
+              onClick={(event) => { event.stopPropagation(); startGenerate(); }}
             >
-              立即生成
+              生成配图
             </button>
           )}
         </div>
@@ -195,7 +229,7 @@ function StoryIllustratedContent({
   playingVoiceSegmentId?: string | null;
   statusRenderHtml?: string | null;
   theaterRenderHtml?: string | null;
-  onRetryIllustration?: (desc: string) => void;
+  onRetryIllustration?: (desc: string) => boolean | Promise<boolean>;
 }) {
   const statusHtml = statusRenderHtml ?? undefined;
   const theaterHtml = theaterRenderHtml ?? undefined;
@@ -1604,20 +1638,23 @@ export function StoryApp({ onClose }: StoryAppProps) {
     setStorageVersion((value) => value + 1);
   }
 
-  /** 手动重试/补生成一张插图：匹配该消息正文中最先出现的同描述标签并回写。 */
+  /** 手动重试/补生成一张插图：匹配该消息正文中最先出现的同描述标签并回写；返回是否成功。 */
   async function retryStoryIllustration(
     sessionId: string,
     messageId: string,
     desc: string,
     independent: boolean,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const character = loadCharacters().find((item) => item.id === activeCharacterId);
     const characterId = activeCharacterId || "";
     const characterName = character?.name || "";
     const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName }).catch(() => null);
-    if (!mediaRef) return;
+    if (!mediaRef) {
+      console.warn("[story-illustration] 手动生成失败（生图 API 未配置或返回空）:", desc.slice(0, 40));
+      return false;
+    }
     const message = loadStoryMessages(sessionId).find((item) => item.id === messageId);
-    if (!message) return;
+    if (!message) return false;
     const newRaw = applyIllustrationMediaRef(message.rawContent, desc, mediaRef);
     const refs = { ...(message.imageMediaRefs || {}), [desc]: mediaRef };
     updateStoryMessageIllustration(messageId, newRaw, refs);
@@ -1626,6 +1663,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
     if (!independent && characterId) {
       void saveStoryIllustrationMemory(characterId, characterName, desc, [messageId]);
     }
+    return true;
   }
 
   async function handleSend(userTextInput: string) {
@@ -2367,14 +2405,12 @@ export function StoryApp({ onClose }: StoryAppProps) {
                               playingVoiceSegmentId={playingVoiceSegmentId}
                               statusRenderHtml={activeStatusRenderHtml}
                               theaterRenderHtml={activeTheaterRenderHtml}
-                              onRetryIllustration={(desc) => {
-                                void retryStoryIllustration(
+                              onRetryIllustration={(desc) => retryStoryIllustration(
                                   message.sessionId,
                                   message.id,
                                   desc,
                                   Boolean(currentSession?.independentStory),
-                                );
-                              }}
+                                )}
                             />
                           )}
                         </div>
