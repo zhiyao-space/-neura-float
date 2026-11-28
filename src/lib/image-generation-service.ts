@@ -642,6 +642,9 @@ export async function fetchNovelAiModels(apiKey: string, baseUrl?: string): Prom
   }
 }
 
+/** 用户本人专属生图设定在 characterReferences 里的固定 key（复用角色设定结构）。 */
+export const USER_IMAGE_REFERENCE_KEY = "__user__";
+
 export async function generateImageFromConfiguredApi(params: {
   description: string;
   characterId?: string;
@@ -683,6 +686,12 @@ export async function generateImageFromConfiguredApi(params: {
       ? novelAiCharacterReference?.featurePrompt?.trim()
       : "";
     if (characterFeaturePrompt) positiveParts.push(characterFeaturePrompt);
+    // 用户本人专属特征：无条件注入（不依赖 characterId），受用户卡片上的 NAI 开关控制
+    const userReference = settings.characterReferences?.[USER_IMAGE_REFERENCE_KEY];
+    const userFeaturePrompt = userReference?.novelAiFeaturePromptEnabled !== false
+      ? userReference?.featurePrompt?.trim() || ""
+      : "";
+    if (userFeaturePrompt) positiveParts.push(userFeaturePrompt);
     if (description) positiveParts.push(description);
     if (characterFeaturePrompt && hasOutfitHint(description)) positiveParts.push("outfit as described in scene prompt");
     const rawJoined = positiveParts.join(", ");
@@ -767,26 +776,34 @@ export async function generateImageFromConfiguredApi(params: {
   const openaiSettings = openaiPreset ? { ...settings, ...openaiPreset } : settings;
   if (!openaiSettings.apiKey.trim() || !openaiSettings.baseUrl.trim() || !openaiSettings.model.trim()) return null;
 
+  const userReference = settings.characterReferences?.[USER_IMAGE_REFERENCE_KEY];
   const reference = params.characterId ? settings.characterReferences?.[params.characterId] : undefined;
+  // 参考图来源：优先角色参考图；角色未上传时回退用户本人参考图
+  const referenceSource = reference?.assetId ? reference : userReference;
   // 「非自拍不使用参考图」开关已从生图设置页删除：参考图启用后始终参与生成
   const shouldUseReference = Boolean(
     params.useReferenceImage
-    && reference?.assetId
-    && reference.enabled !== false,
+    && referenceSource?.assetId
+    && referenceSource.enabled !== false,
   );
-  const rawReferenceImageDataUrl = shouldUseReference && reference?.assetId
-    ? await getChatImageFromIndexedDB(reference.assetId)
+  const rawReferenceImageDataUrl = shouldUseReference && referenceSource?.assetId
+    ? await getChatImageFromIndexedDB(referenceSource.assetId)
     : null;
   throwIfAborted(params.signal);
   const referenceImageDataUrl = rawReferenceImageDataUrl
-    ? await normalizeReferenceImageForEdit(rawReferenceImageDataUrl, reference?.faceCrop)
+    ? await normalizeReferenceImageForEdit(rawReferenceImageDataUrl, referenceSource?.faceCrop)
     : null;
   throwIfAborted(params.signal);
   const characterPrompt = reference?.featurePrompt?.trim() || "";
+  const userPrompt = userReference?.featurePrompt?.trim() || "";
   // 描述已明确服装时，固定外观仅约束长相，服饰以本次场景描述为准
   const appearanceSuffix = hasOutfitHint(description) ? "\n(服饰/服装以场景描述为准)" : "";
+  const appearanceLines = [
+    characterPrompt ? `【角色固定外观】${characterPrompt}` : "",
+    userPrompt ? `【用户固定外观】${userPrompt}` : "",
+  ].filter(Boolean).join("\n");
   const prompt = mergePrompt(
-    characterPrompt ? `${description}\n\n【角色固定外观】${characterPrompt}${appearanceSuffix}` : description,
+    appearanceLines ? `${description}\n\n${appearanceLines}${appearanceSuffix}` : description,
     openaiSettings.extraPrompt,
   );
 

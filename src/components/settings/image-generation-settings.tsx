@@ -19,6 +19,7 @@ import {
     fetchNovelAiModels,
     filterLikelyImageModels,
     generateImageFromConfiguredApi,
+    USER_IMAGE_REFERENCE_KEY,
 } from "@/lib/image-generation-service";
 import { Alert } from "@/components/ui/feedback";
 import { Input, Select, Textarea, Toggle } from "@/components/ui/form";
@@ -1336,6 +1337,86 @@ export function ImageGenerationSettings() {
                         )}
                     </div>
                 )}
+
+                {(() => {
+                    const userRef = settings.characterReferences?.[USER_IMAGE_REFERENCE_KEY];
+                    const userPreview = referencePreviews[USER_IMAGE_REFERENCE_KEY];
+                    return (
+                        <div className="menu-group p-4 flex flex-col gap-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                    <div className="menu-label truncate">用户 · 专属生图设定</div>
+                                    <div className="menu-desc">只影响你本人（用户）出镜的图片，不会改动角色设定。</div>
+                                </div>
+                                {userPreview && (
+                                    <button
+                                        type="button"
+                                        className={`ui-btn shrink-0 ${userRef?.enabled === false ? "ui-btn-primary" : "ui-btn-outline"}`}
+                                        onClick={() => updateCharacterReference(USER_IMAGE_REFERENCE_KEY, { enabled: userRef?.enabled === false })}
+                                    >
+                                        <Power size={16} />
+                                        {userRef?.enabled === false ? "启用参考图" : "关闭参考图"}
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <label className="menu-desc ml-1">专属人物特征提示词</label>
+                                <Textarea
+                                    value={userRef?.featurePrompt || ""}
+                                    onChange={(event) => updateCharacterReference(USER_IMAGE_REFERENCE_KEY, { featurePrompt: event.target.value })}
+                                    placeholder="例如：黑色短发、丹凤眼、右眉有一道浅疤、清瘦高挑……"
+                                    rows={4}
+                                />
+                                <span className="menu-desc ml-1">生成包含你本人的图片时自动追加，OpenAI 与 NovelAI 均生效；剧情配图、共创插图等未绑定角色的生图也会使用。</span>
+                            </div>
+
+                            {settings.provider === "novelai" && (
+                                <div className="menu-item !px-0 !py-0">
+                                    <span className="settings-tools-menu-copy">
+                                        <span className="menu-label appearance-menu-item-label">NovelAI 使用用户专属提示词</span>
+                                        <span className="menu-desc settings-tools-menu-desc">关闭后 NAI 只使用当前画面描述与预设，不追加上方用户特征。</span>
+                                    </span>
+                                    <span className="menu-right settings-tools-menu-toggle">
+                                        <Toggle
+                                            checked={userRef?.novelAiFeaturePromptEnabled !== false}
+                                            onChange={(novelAiFeaturePromptEnabled) => updateCharacterReference(USER_IMAGE_REFERENCE_KEY, { novelAiFeaturePromptEnabled })}
+                                            className="settings-toggle-control"
+                                        />
+                                    </span>
+                                </div>
+                            )}
+
+                            {settings.provider !== "novelai" && (
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        className="ui-btn ui-btn-soft-action flex-1"
+                                        onClick={() => {
+                                            const input = document.createElement("input");
+                                            input.type = "file";
+                                            input.accept = "image/*";
+                                            input.onchange = async () => {
+                                                const file = input.files?.[0];
+                                                if (file) await uploadReference(USER_IMAGE_REFERENCE_KEY, file);
+                                            };
+                                            input.click();
+                                        }}
+                                    >
+                                        <Upload size={16} />
+                                        {userPreview ? "更换参考图" : "选择参考图"}
+                                    </button>
+                                    {userPreview && (
+                                        <button type="button" className="ui-btn ui-btn-outline flex-1" onClick={() => openFaceCrop(USER_IMAGE_REFERENCE_KEY)}>
+                                            <ScanFace size={16} />
+                                            选取脸部
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
 
             {cropCharacterId && referencePreviews[cropCharacterId] && (
