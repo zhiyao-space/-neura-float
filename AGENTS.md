@@ -34,4 +34,4 @@
 - read-browser-screenshot 可能持续返回 preview_busy / browser-use 未返回可用截图（平台通道问题），此时用 read-browser-logs 对比崩溃时间戳（修复后无新 TypeError 时间戳 + curl 确认 dev 服务器已提供修复代码）即可作为运行时验证证据
 
 ## What Didn't Work
-- ❌ 发布通道 `vite build`（默认线程/堆配置）在 "rendering chunks" 阶段被 OOM 杀（ELIFECYCLE exit 137，8.5K 模块）→ package.json build 脚本固化 `RAYON_NUM_THREADS=2 GOMAXPROCS=2 NODE_OPTIONS=--max-old-space-size=2048 vite build`（限制 rolldown rayon 与 esbuild 并行度，实测 2048MB 堆 + 2 线程本地 18s 通过），发布前不要再手改回默认
+- ❌ 发布通道 `vite build` 在 "rendering chunks" 阶段被 OOM 杀（ELIFECYCLE exit 137，8.5K 模块）；2 线程 + 2048MB 堆仍会被发布容器杀 → package.json build 脚本固化 `RAYON_NUM_THREADS=1 GOMAXPROCS=1 NODE_OPTIONS=--max-old-space-size=1536 vite build`（本地实测 1536/1024MB + 1 线程均 ~21s 通过，1024MB 仍有余量），发布前不要再手改回默认
