@@ -214,7 +214,8 @@ export async function loadRecentShortcutCommands(limit = 12): Promise<ShortcutCo
       cache: "no-store",
     });
     const data = await parseApiResponse<{ ok: true; commands: ShortcutCommand[] }>(response);
-    return data.commands;
+    // 服务端返回 ok 但缺 commands 字段时（旧版网关/降级响应）兜底为空数组
+    return Array.isArray(data.commands) ? data.commands : [];
   };
   if (!isPersonalPushCloudActive()) return fromSite();
   // 个人云启用后推送命令在用户库、邮件命令仍在站点库，合并展示最近记录。

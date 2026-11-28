@@ -27,3 +27,8 @@
 - 桌面 App 全屏页根容器必须 `position:absolute; inset:0` 且显式 `z-index:30`（与 .mixology-app 一致），漏 z-index 会被状态栏/停靠栏的透明层盖住，出现"按钮看得见点不了"的假摆设
 - 聊天气泡组件是运行时热路径：气泡内引用未定义变量会炸掉整个聊天组件（白屏），vite build 不报这类错（仅 esbuild 转译）——改气泡组件后必须 `npx tsc --noEmit` 自查该文件无新增错误
 - NovelAI 原生端点生成请求只认 encode-vibe 编码（Vibe Transfer 的 reference_image_multiple），塞原始图片 base64 会报 400 INVALID_NATIVE_REQUEST；原图条目需先 POST /ai/encode-vibe（中转站 /v1 前缀）并按 图片+强度+模型 缓存
+
+## Lessons
+- 预览报错的 stack 是编译产物坐标而非源码坐标：curl dev 服务器 `/src/components/xxx.tsx` 抓转换后 JS，按 stack 行号直查真实出错语句
+- `.catch(() => undefined)` 会把 undefined 写入 React state，下游 useMemo `.length` 崩溃 → CatchBoundary 白屏；Promise 链的 catch 必须回退安全默认值（空数组等），useMemo 消费外列表时也应 Array.isArray 兜底
+- read-browser-screenshot 可能持续返回 preview_busy / browser-use 未返回可用截图（平台通道问题），此时用 read-browser-logs 对比崩溃时间戳（修复后无新 TypeError 时间戳 + curl 确认 dev 服务器已提供修复代码）即可作为运行时验证证据

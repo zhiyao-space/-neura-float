@@ -532,8 +532,14 @@ export function RealityBridgeApp({ onClose, onNotice, onOpenSettings }: {
     if (tab !== "history" && mainSec !== "overview") return;
     let cancelled = false;
     void loadRecentShortcutCommands(8)
-      .then(commands => { if (!cancelled) setRecentCommands(commands); })
-      .catch(() => undefined);
+      .then(commands => {
+        // 快捷指令列表加载失败时 loadRecentShortcutCommands 可能 resolve undefined，
+        // 直接写入会把 recentCommands 变成 undefined 并炸掉概览页 stats 统计。
+        const safe = Array.isArray(commands) ? commands : [];
+        if (!Array.isArray(commands)) console.warn("[reality-bridge] loadRecentShortcutCommands 返回非数组，已兜底为空列表", commands);
+        if (!cancelled) setRecentCommands(safe);
+      })
+      .catch((error) => { console.warn("[reality-bridge] 快捷指令列表加载失败，保留空列表", error); });
     return () => { cancelled = true; };
   }, [tab]);
 
@@ -1116,34 +1122,41 @@ export function RealityBridgeApp({ onClose, onNotice, onOpenSettings }: {
   /* 概览页统计：把 feed / rules / shortcutActions 揉成一组可读结论。
      不引图表库——这里要的是「一眼看出有没有在动」，几个数字就够。 */
   const stats = useMemo(() => {
-    const today = feed.filter(entry => isToday(entry.receivedAt));
+    // 防御：feed / recentCommands 在 HMR 首帧等异常时序下可能为 undefined，
+    // 这里统一兜底成空数组，避免概览页统计直接抛 TypeError 白屏。
+    const safeFeed = Array.isArray(feed) ? feed : [];
+    const safeCommands = Array.isArray(recentCommands) ? recentCommands : [];
+    if (!Array.isArray(feed) || !Array.isArray(recentCommands)) {
+      console.warn("[reality-bridge] stats 兜底生效：feed/recentCommands 存在 undefined，已按空数组处理", { feed: Array.isArray(feed), recentCommands: Array.isArray(recentCommands) });
+    }
+    const today = safeFeed.filter(entry => isToday(entry.receivedAt));
     const days: { label: string; count: number }[] = [];
     for (let i = 6; i >= 0; i -= 1) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      const count = feed.filter(entry => {
+      const count = safeFeed.filter(entry => {
         const t = new Date(entry.receivedAt);
         return `${t.getFullYear()}-${t.getMonth()}-${t.getDate()}` === key;
       }).length;
       days.push({ label: `${d.getDate()}`, count });
     }
     const byType = new Map<string, number>();
-    for (const entry of feed) {
+    for (const entry of safeFeed) {
       const t = (entry.type || "未知").trim() || "未知";
       byType.set(t, (byType.get(t) ?? 0) + 1);
     }
     const topTypes = Array.from(byType.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    const failed = feed.filter(entry => Boolean(entry.error));
+    const failed = safeFeed.filter(entry => Boolean(entry.error));
     const since = Date.now() - 24 * 60 * 60 * 1000;
-    const last24h = feed.filter(entry => {
+    const last24h = safeFeed.filter(entry => {
       const t = Date.parse(entry.receivedAt);
       return Number.isFinite(t) && t >= since;
     }).length;
     const peak = days.reduce((max, d) => Math.max(max, d.count), 0);
-    const commands = recentCommands.length;
-    const commandsFailed = recentCommands.filter(c => c.status === "failed" || c.status === "expired").length;
-    return { today: today.length, total: feed.length, days, topTypes, failed, last24h, peak, commands, commandsFailed };
+    const commands = safeCommands.length;
+    const commandsFailed = safeCommands.filter(c => c.status === "failed" || c.status === "expired").length;
+    return { today: today.length, total: safeFeed.length, days, topTypes, failed, last24h, peak, commands, commandsFailed };
   }, [feed, recentCommands]);
 
   /* 收到过的信号名去重，供向导第②步点选 */
