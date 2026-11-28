@@ -1564,14 +1564,25 @@ export function StoryApp({ onClose }: StoryAppProps) {
     signal?: AbortSignal,
   ): Promise<void> {
     const message = loadStoryMessages(sessionId).find((item) => item.id === messageId);
-    if (!message || !/\[插图[:：]/.test(message.rawContent)) return;
-    const pending = extractPendingIllustrations(message.rawContent, 2);
+    if (!message) return;
+    let rawContent = message.rawContent;
+    // 兜底：模型偶尔仍不输出插图标签时，从剧情摘要派生一条描述并补写标签，保证每条回复都有配图
+    if (!/\[插图[:：]/.test(rawContent)) {
+      const derivedDesc = (message.storySummary || rawContent).replace(/\s+/g, " ").trim().slice(0, 36);
+      if (!derivedDesc) return;
+      console.log("[story-illustration] 回复缺插图标签，自动补写兜底标签:", derivedDesc);
+      rawContent = `${rawContent}\n\n[插图:${derivedDesc}]`;
+      // 兜底标签要同时写进 renderedContent，否则渲染层读 renderedContent 时看不到标签
+      const rendered = message.renderedContent ? `${message.renderedContent}\n\n[插图:${derivedDesc}]` : rawContent;
+      updateStoryMessageIllustration(messageId, rawContent, {}, rendered);
+    }
+    const pending = extractPendingIllustrations(rawContent, 2);
     if (!pending.length) return;
     const character = loadCharacters().find((item) => item.id === characterId);
     const characterName = character?.name || "";
     console.log("[story-illustration] pending tasks:", pending.length, pending);
     const mediaRefs: Record<string, string> = {};
-    let workingRaw = message.rawContent;
+    let workingRaw = rawContent;
     for (const desc of pending) {
       if (signal?.aborted) return;
       const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName, signal }).catch((err) => {

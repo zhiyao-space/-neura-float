@@ -893,12 +893,14 @@ export function updateStoryMessageIllustration(
   messageId: string,
   newRawContent: string,
   mediaRefs: Record<string, string>,
+  newRenderedContent?: string,
 ): StoryMessage | null {
   const idx = _messagesCache.findIndex(m => m.id === messageId);
   if (idx === -1) return null;
   _messagesCache[idx] = {
     ..._messagesCache[idx],
     rawContent: newRawContent,
+    ...(newRenderedContent !== undefined ? { renderedContent: newRenderedContent } : {}),
     imageMediaRefs: { ...(_messagesCache[idx].imageMediaRefs || {}), ...mediaRefs },
   };
   storyDb.messages.put(_messagesCache[idx]).catch(() => undefined);
