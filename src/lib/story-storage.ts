@@ -1,6 +1,7 @@
 import Dexie from "dexie";
 import { formatChatTimestamp } from "./llm-prompt-assembler";
 import { hydrateKvDb, kvGet, kvSet, registerKvMigration } from "./kv-db";
+import { collectStoryIllustrationDescriptions } from "./story-illustration";
 
 export type StoryUiPrefs = {
   hideBubble?: boolean;
@@ -387,6 +388,8 @@ export type StoryMessage = {
   storySummary?: string;
   regexSignature?: string;
   parserVersion?: number;
+  /** 已生成配图的插图 mediaRef 记录（desc → mediaRef）；mediaRef 同时回填进 rawContent 标签内。 */
+  imageMediaRefs?: Record<string, string>;
   createdAt: string;
 };
 
@@ -885,6 +888,23 @@ export function saveStoryLaunchTarget(session: StorySession): void {
   kvSet("story-last-active-character-id", session.characterId);
 }
 
+/** 插图生成完成后回填：更新 rawContent 标签与 imageMediaRefs 记录并持久化。 */
+export function updateStoryMessageIllustration(
+  messageId: string,
+  newRawContent: string,
+  mediaRefs: Record<string, string>,
+): StoryMessage | null {
+  const idx = _messagesCache.findIndex(m => m.id === messageId);
+  if (idx === -1) return null;
+  _messagesCache[idx] = {
+    ..._messagesCache[idx],
+    rawContent: newRawContent,
+    imageMediaRefs: { ...(_messagesCache[idx].imageMediaRefs || {}), ...mediaRefs },
+  };
+  storyDb.messages.put(_messagesCache[idx]).catch(() => undefined);
+  return _messagesCache[idx];
+}
+
 /** Delete a single story message */
 export function deleteStoryMessage(messageId: string): void {
     _messagesCache = _messagesCache.filter(m => m.id !== messageId);
@@ -959,10 +979,13 @@ export function loadStoryProjectionEntries(
     if (!summaryText) continue;
 
     const ts = formatChatTimestamp(current.createdAt);
+    // 记忆通连：把已生成配图的插图描述附进记忆投影，让记忆里能“想起”画面
+    const illustrationDescs = collectStoryIllustrationDescriptions(current.rawContent, 3);
+    const illustrationSuffix = illustrationDescs.length ? `（配图：${illustrationDescs.join("；")}）` : "";
     projections.push({
       id: `story_projection_${current.id}`,
       timestamp: current.createdAt,
-      content: `[事件 ${ts}] ${summaryText}`,
+      content: `[事件 ${ts}] ${summaryText}${illustrationSuffix}`,
     });
   }
 

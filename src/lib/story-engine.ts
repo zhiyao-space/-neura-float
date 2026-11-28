@@ -22,6 +22,7 @@ import { STORY_PARSER_VERSION } from "./story-parser";
 import { loadStoryMessages, replaceStoryMessages, resolveActiveStorySchemes, type StoryCharacterSettings, type StoryMessage } from "./story-storage";
 import type { ChatMessage } from "./chat-storage";
 import { MacroEngine } from "./macro-engine";
+import { stripStoryIllustrationTags } from "./story-illustration";
 
 const DEFAULT_STORY_FOLD_TAGS = "think,thinking,summary,story_status,story_theater";
 const DEFAULT_STORY_CONTEXT_EXCLUDED_TAGS = "think,thinking,story_theater";
@@ -104,6 +105,13 @@ export type StoryPreviewResult = {
   presetName: string;
 };
 
+const STORY_ILLUSTRATION_PROMPT = `# 剧情配图
+在剧情发生重要画面转换、新场景展开或出现标志性画面时，在对应位置单独一行输出插图标签：[插图:一句话画面描述]
+要求：
+- 每次回复最多输出 1 个插图标签，画面平淡的回复不要输出
+- 描述用一句 10-30 字的画面语言，突出场景、人物动作与氛围，不要写角色内心或抽象概念
+- 插图标签只是画面标记，不要把它写进对白或旁白里解释`;
+
 function escapeTagName(tag: string): string {
   return tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -122,7 +130,7 @@ function toHistoryMessage(message: StoryMessage, contextExcludedTags?: string): 
     id: message.id,
     sessionId: message.sessionId,
     role: message.role,
-    content: stripContextExcludedTags(message.rawContent, contextExcludedTags),
+    content: stripStoryIllustrationTags(stripContextExcludedTags(message.rawContent, contextExcludedTags)),
     status: "sent",
     createdAt: message.createdAt,
   };
@@ -329,6 +337,7 @@ async function buildStoryPromptMessages(
     messages.push({ role: "system", content: `# 悬浮小手机最近线上聊天\n以下记录用于衔接线上与线下剧情，不要逐字复述：\n${floatingChatContext.trim()}` });
   }
   messages.push({ role: "system", content: STORY_VOICE_FORMAT_PROMPT });
+  messages.push({ role: "system", content: STORY_ILLUSTRATION_PROMPT });
   return messages;
 }
 

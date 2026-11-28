@@ -103,6 +103,139 @@ import {
   synthesizeSpeech,
   unlockAudioPlayback,
 } from "@/lib/tts-service";
+import { getChatImageFromIndexedDB } from "@/lib/chat-asset-storage";
+import {
+  splitIllustrationBlocks,
+  extractPendingIllustrations,
+  applyIllustrationMediaRef,
+  generateStoryIllustrationMediaRef,
+  saveStoryIllustrationMemory,
+  type StoryIllustrationBlock,
+} from "@/lib/story-illustration";
+import { updateStoryMessageIllustration } from "@/lib/story-storage";
+
+/** 剧情配图卡片：mediaRef → dataUrl 加载、生成中骨架、失败占位+重试。 */
+function StoryIllustrationCard({
+  desc,
+  mediaRef,
+  onRetry,
+}: {
+  desc: string;
+  mediaRef: string | null;
+  onRetry?: (desc: string) => void;
+}) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setFailed(false);
+    setDataUrl(null);
+    if (!mediaRef) return () => { alive = false; };
+    getChatImageFromIndexedDB(mediaRef)
+      .then((url) => {
+        if (!alive) return;
+        if (url) setDataUrl(url);
+        else setFailed(true);
+      })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [mediaRef]);
+
+  return (
+    <figure className={`story-illustration-card${dataUrl ? " story-illustration-card-ready" : ""}`}>
+      {dataUrl ? (
+        <img src={dataUrl} alt={desc} loading="lazy" />
+      ) : failed ? (
+        <div className="story-illustration-fallback">
+          <span className="story-illustration-fallback-label">配图生成失败</span>
+          <button
+            type="button"
+            className="story-illustration-retry"
+            onClick={(event) => { event.stopPropagation(); setFailed(false); onRetry?.(desc); }}
+          >
+            重新生成
+          </button>
+        </div>
+      ) : (
+        <div className="story-illustration-skeleton">
+          <span className="story-illustration-skeleton-label">
+            {mediaRef ? "配图加载中…" : "配图生成中…"}
+          </span>
+          {!mediaRef && onRetry && (
+            <button
+              type="button"
+              className="story-illustration-retry"
+              onClick={(event) => { event.stopPropagation(); onRetry(desc); }}
+            >
+              立即生成
+            </button>
+          )}
+        </div>
+      )}
+      <figcaption className="story-illustration-caption">{desc}</figcaption>
+    </figure>
+  );
+}
+
+/** 图文混排剧情正文：按 [插图:desc|mediaRef] 标签拆分为 文本/插图卡片。 */
+function StoryIllustratedContent({
+  content,
+  messageId,
+  onOptionSelect,
+  onVoicePlay,
+  playingVoiceSegmentId,
+  statusRenderHtml,
+  theaterRenderHtml,
+  onRetryIllustration,
+}: {
+  content: string;
+  messageId: string;
+  onOptionSelect?: (option: string) => void;
+  onVoicePlay?: (segment: StoryVoiceSegment) => void;
+  playingVoiceSegmentId?: string | null;
+  statusRenderHtml?: string | null;
+  theaterRenderHtml?: string | null;
+  onRetryIllustration?: (desc: string) => void;
+}) {
+  const statusHtml = statusRenderHtml ?? undefined;
+  const theaterHtml = theaterRenderHtml ?? undefined;
+  if (!content.includes("[插图")) {
+    return (
+      <StoryHtmlRenderer
+        content={content}
+        messageId={messageId}
+        onOptionSelect={onOptionSelect}
+        onVoicePlay={onVoicePlay}
+        playingVoiceSegmentId={playingVoiceSegmentId}
+        statusRenderHtml={statusHtml}
+        theaterRenderHtml={theaterHtml}
+        serifIframeFallback
+      />
+    );
+  }
+  const blocks = splitIllustrationBlocks(content);
+  return (
+    <div className="story-illustrated-body">
+      {blocks.map((block: StoryIllustrationBlock, index: number) => (
+        block.type === "text" ? (
+          <StoryHtmlRenderer
+            key={index}
+            content={block.content}
+            messageId={`${messageId}_seg${index}`}
+            onOptionSelect={onOptionSelect}
+            onVoicePlay={onVoicePlay}
+            playingVoiceSegmentId={playingVoiceSegmentId}
+            statusRenderHtml={statusHtml}
+            theaterRenderHtml={theaterHtml}
+            serifIframeFallback
+          />
+        ) : (
+          <StoryIllustrationCard key={index} desc={block.desc} mediaRef={block.mediaRef} onRetry={onRetryIllustration} />
+        )
+      ))}
+    </div>
+  );
+}
 
 type StoryAppProps = {
   onClose: () => void;
@@ -1422,6 +1555,68 @@ export function StoryApp({ onClose }: StoryAppProps) {
     voiceSequenceIndexRef.current = segments.length;
   }, [collectStoryVoiceSegments, playStoryVoice, playingVoiceSegmentId, showVoiceNotice, uiPrefs.voiceEnabled]);
 
+  /** 后台生成一条 assistant 剧情消息里的插图标签并回填；同时把配图写入角色记忆（记忆通连）。 */
+  async function spawnStoryIllustrations(
+    sessionId: string,
+    messageId: string,
+    characterId: string,
+    independent: boolean,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const message = loadStoryMessages(sessionId).find((item) => item.id === messageId);
+    if (!message || !/\[插图[:：]/.test(message.rawContent)) return;
+    const pending = extractPendingIllustrations(message.rawContent, 2);
+    if (!pending.length) return;
+    const character = loadCharacters().find((item) => item.id === characterId);
+    const characterName = character?.name || "";
+    console.log("[story-illustration] pending tasks:", pending.length, pending);
+    const mediaRefs: Record<string, string> = {};
+    let workingRaw = message.rawContent;
+    for (const desc of pending) {
+      if (signal?.aborted) return;
+      const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName, signal }).catch((err) => {
+        if (!signal?.aborted) console.warn("[story-illustration] generate failed:", desc.slice(0, 40), err);
+        return null;
+      });
+      if (!mediaRef || signal?.aborted) return;
+      mediaRefs[desc] = mediaRef;
+      workingRaw = applyIllustrationMediaRef(workingRaw, desc, mediaRef);
+      // 回填进消息正文并持久化（卡片随即从骨架切换为成图）
+      updateStoryMessageIllustration(messageId, workingRaw, mediaRefs);
+      if (activeSessionIdRef.current === sessionId) {
+        setMessages(loadStoryMessages(sessionId));
+      }
+      if (!independent && characterId) {
+        void saveStoryIllustrationMemory(characterId, characterName, desc, [messageId]);
+      }
+    }
+    setStorageVersion((value) => value + 1);
+  }
+
+  /** 手动重试/补生成一张插图：匹配该消息正文中最先出现的同描述标签并回写。 */
+  async function retryStoryIllustration(
+    sessionId: string,
+    messageId: string,
+    desc: string,
+    independent: boolean,
+  ): Promise<void> {
+    const character = loadCharacters().find((item) => item.id === activeCharacterId);
+    const characterId = activeCharacterId || "";
+    const characterName = character?.name || "";
+    const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName }).catch(() => null);
+    if (!mediaRef) return;
+    const message = loadStoryMessages(sessionId).find((item) => item.id === messageId);
+    if (!message) return;
+    const newRaw = applyIllustrationMediaRef(message.rawContent, desc, mediaRef);
+    const refs = { ...(message.imageMediaRefs || {}), [desc]: mediaRef };
+    updateStoryMessageIllustration(messageId, newRaw, refs);
+    if (activeSessionIdRef.current === sessionId) setMessages(loadStoryMessages(sessionId));
+    setStorageVersion((value) => value + 1);
+    if (!independent && characterId) {
+      void saveStoryIllustrationMemory(characterId, characterName, desc, [messageId]);
+    }
+  }
+
   async function handleSend(userTextInput: string) {
     const userText = userTextInput.trim();
     if (!activeSessionId || !userText || isGenerating) return;
@@ -1470,6 +1665,15 @@ export function StoryApp({ onClose }: StoryAppProps) {
         setMessages(loadStoryMessages(sessionId)); // 按会话从存储重读，杜绝跨会话串消息
       }
       setStorageVersion((value) => value + 1);
+
+      // 后台生成插图并写入记忆（独立剧情不连记忆）
+      void spawnStoryIllustrations(
+        sessionId,
+        assistantMessage.id,
+        characterId,
+        Boolean(currentSession?.independentStory),
+        generationRun.controller.signal,
+      ).catch((err) => console.warn("[story-illustration] spawn failed:", err));
 
       const memoryCharacterIds = currentSession?.participantIds?.length ? currentSession.participantIds : [characterId];
       const storyCharacters = memoryCharacterIds
@@ -1546,7 +1750,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
       signal: generationRun.controller.signal,
     }).then((result) => {
       if (!isCurrentGeneration()) return;
-      pushStoryMessage({
+      const autoAssistantMessage = pushStoryMessage({
         sessionId,
         role: "assistant",
         rawContent: result.rawText,
@@ -1557,6 +1761,15 @@ export function StoryApp({ onClose }: StoryAppProps) {
       });
       if (activeSessionIdRef.current === sessionId) setMessages(loadStoryMessages(sessionId));
       setStorageVersion((value) => value + 1);
+
+      // 开场自动剧情同样后台生成插图并写入记忆
+      void spawnStoryIllustrations(
+        sessionId,
+        autoAssistantMessage.id,
+        characterId,
+        Boolean(session.independentStory),
+        generationRun.controller.signal,
+      ).catch((err) => console.warn("[story-illustration] auto-spawn failed:", err));
 
       if (!session.independentStory) {
         for (const id of session.participantIds?.length ? session.participantIds : [characterId]) {
@@ -2135,7 +2348,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
                               </div>
                             </div>
                           ) : (
-                            <StoryHtmlRenderer
+                            <StoryIllustratedContent
                               content={message.renderedContent || message.rawContent}
                               messageId={message.id}
                               onOptionSelect={handleOptionSelect}
@@ -2143,7 +2356,14 @@ export function StoryApp({ onClose }: StoryAppProps) {
                               playingVoiceSegmentId={playingVoiceSegmentId}
                               statusRenderHtml={activeStatusRenderHtml}
                               theaterRenderHtml={activeTheaterRenderHtml}
-                              serifIframeFallback
+                              onRetryIllustration={(desc) => {
+                                void retryStoryIllustration(
+                                  message.sessionId,
+                                  message.id,
+                                  desc,
+                                  Boolean(currentSession?.independentStory),
+                                );
+                              }}
                             />
                           )}
                         </div>

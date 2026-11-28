@@ -1656,3 +1656,91 @@
           .story-branch-memory { padding:6px 5px; font-size:calc(7.5px*var(--app-text-scale,1)); }
           .story-group-picker { grid-template-columns:1fr; }
         }
+
+/* ── 剧情配图卡片（[插图:desc] 场景插图） ── */
+.story-illustrated-body { display: flex; flex-direction: column; gap: 6px; }
+.story-illustration-card {
+  margin: 4px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.25s ease;
+}
+.story-illustration-card-ready { box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08); }
+.story-illustration-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.story-illustration-card .story-illustration-caption {
+  padding: 7px 10px 8px;
+  font-size: calc(11px * var(--app-text-scale, 1));
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.72);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.65));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.story-illustration-skeleton,
+.story-illustration-fallback {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(110deg, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.09) 45%, rgba(0,0,0,0.04) 60%);
+  background-size: 220% 100%;
+  animation: story-illu-shimmer 1.6s linear infinite;
+}
+.story-illustration-fallback { animation: none; background: rgba(0,0,0,0.05); }
+.story-illustration-skeleton-label,
+.story-illustration-fallback-label {
+  font-size: calc(11px * var(--app-text-scale, 1));
+  color: rgba(0, 0, 0, 0.45);
+  letter-spacing: 0.05em;
+}
+.story-illustration-retry {
+  border: none;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: calc(11px * var(--app-text-scale, 1));
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.story-illustration-retry:active { transform: scale(0.96); opacity: 0.85; }
+@keyframes story-illu-shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+.dark .story-illustration-card,
+:root.dark .story-illustration-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.dark .story-illustration-card .story-illustration-caption,
+:root.dark .story-illustration-card .story-illustration-caption {
+  color: rgba(255, 255, 255, 0.78);
+  background: linear-gradient(to bottom, rgba(20, 20, 20, 0.85), rgba(20, 20, 20, 0.6));
+}
+.dark .story-illustration-skeleton,
+.dark .story-illustration-fallback,
+:root.dark .story-illustration-skeleton,
+:root.dark .story-illustration-fallback {
+  background: linear-gradient(110deg, rgba(255,255,255,0.05) 30%, rgba(255,255,255,0.11) 45%, rgba(255,255,255,0.05) 60%);
+  background-size: 220% 100%;
+}
+.dark .story-illustration-fallback,
+:root.dark .story-illustration-fallback { animation: none; background: rgba(255,255,255,0.06); }
+.dark .story-illustration-skeleton-label,
+.dark .story-illustration-fallback-label,
+:root.dark .story-illustration-skeleton-label,
+:root.dark .story-illustration-fallback-label { color: rgba(255, 255, 255, 0.5); }
