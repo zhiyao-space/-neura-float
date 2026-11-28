@@ -136,7 +136,7 @@ function toHistoryMessage(message: StoryMessage, contextExcludedTags?: string): 
   };
 }
 
-function resolveStoryConfigs(characterId: string): {
+export function resolveStoryConfigs(characterId: string): {
   apiConfig: ApiConfig;
   preset: PresetConfig | null;
   regexes: RegexConfig[];

@@ -1619,7 +1619,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
     let workingRaw = rawContent;
     for (const desc of pending) {
       if (signal?.aborted) return;
-      const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName, signal }).catch((err) => {
+      const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName, characterId, signal }).catch((err) => {
         if (!signal?.aborted) console.warn("[story-illustration] generate failed:", desc.slice(0, 40), err);
         return null;
       });
@@ -1648,7 +1648,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
     const character = loadCharacters().find((item) => item.id === activeCharacterId);
     const characterId = activeCharacterId || "";
     const characterName = character?.name || "";
-    const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName }).catch(() => null);
+    const mediaRef = await generateStoryIllustrationMediaRef(desc, { characterName, characterId }).catch(() => null);
     if (!mediaRef) {
       console.warn("[story-illustration] 手动生成失败（生图 API 未配置或返回空）:", desc.slice(0, 40));
       return false;

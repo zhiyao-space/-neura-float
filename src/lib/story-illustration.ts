@@ -3,6 +3,8 @@
 // 并把插图事件写入角色记忆（记忆通连）。
 
 import { generateImageFromConfiguredApi } from "./image-generation-service";
+import { sendLLMRequest } from "./chat-engine";
+import { resolveStoryConfigs } from "./story-engine";
 import { saveMemoryEntry } from "./memory-storage";
 import type { MemoryEntry } from "./memory-types";
 import {
@@ -49,14 +51,49 @@ export function collectStoryIllustrationDescriptions(text: string, limit = 3): s
   return descs;
 }
 
+const CJK_PATTERN = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff]/;
+
+/**
+ * 旧消息的插图描述可能是中文，而 NovelAI 会把中文字符全部过滤掉导致提示词近乎为空。
+ * 这里在生图前检测到中文时，用当前对话 LLM 把画面描述翻译成英文 danbooru 风格提示词；
+ * 翻译失败则原样返回（OpenAI 兼容引擎本身支持中文，不受影响）。
+ */
+async function translateIllustrationDescToEnglish(description: string, characterId?: string): Promise<string> {
+  if (!CJK_PATTERN.test(description)) return description;
+  try {
+    const { apiConfig, preset, regexes } = resolveStoryConfigs(characterId || "");
+    if (!apiConfig) return description;
+    const translated = await sendLLMRequest(
+      apiConfig,
+      preset,
+      [
+        { role: "system", content: "You convert a Chinese scene description into a concise English image-generation prompt in danbooru tag style (comma-separated English phrases). Output ONLY the English prompt, no explanation, no Chinese characters." },
+        { role: "user", content: description },
+      ],
+      regexes,
+      { characterName: "" },
+      { skipOutputRegex: true },
+    );
+    const text = (translated || "").trim().replace(/^["'“”]+|["'“”]+$/g, "");
+    if (text && !CJK_PATTERN.test(text)) {
+      console.info("[story-illustration] 中文画面描述已翻译为英文提示词:", text);
+      return text;
+    }
+  } catch (error) {
+    console.warn("[story-illustration] 画面描述英译失败，回退原文:", error);
+  }
+  return description;
+}
+
 /** 调用统一生图入口生成一张剧情场景插图；失败/无配置返回 null。 */
 export async function generateStoryIllustrationMediaRef(
   description: string,
-  options?: { characterName?: string; signal?: AbortSignal },
+  options?: { characterName?: string; characterId?: string; signal?: AbortSignal },
 ): Promise<string | null> {
-  const contextPrefix = options?.characterName?.trim() ? `${options.characterName.trim()}的剧情场景插画：` : "剧情场景插画：";
+  const englishDescription = await translateIllustrationDescToEnglish(description, options?.characterId);
+  const contextPrefix = options?.characterName?.trim() ? `${options.characterName.trim()} scene illustration, ` : "story scene illustration, ";
   const result = await generateImageFromConfiguredApi({
-    description: `${contextPrefix}${description}`,
+    description: `${contextPrefix}${englishDescription}`,
     appId: "story",
     signal: options?.signal,
   });
