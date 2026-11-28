@@ -60,7 +60,7 @@ export default defineConfig({
     outDir: "dist",
     assetsDir: "assets",
     emptyOutDir: true,
-    minify: "esbuild",
+    minify: "oxc", // rolldown 内置压缩器：同进程压缩，避免 esbuild(Go) 子进程内存峰值被小容器 OOM 杀
     chunkSizeWarningLimit: 4000,
     rollupOptions: {
       output: {
