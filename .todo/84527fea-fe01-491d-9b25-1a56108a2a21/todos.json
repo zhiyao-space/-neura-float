@@ -1,0 +1,44 @@
+[
+  {
+    "id": "1",
+    "status": "completed",
+    "content": "读取剧情/生图/记忆相关源码定点段落",
+    "skills": []
+  },
+  {
+    "id": "2",
+    "status": "completed",
+    "content": "story-illustration.ts 插图引擎 + 导出复用",
+    "skills": []
+  },
+  {
+    "id": "3",
+    "status": "completed",
+    "content": "story-storage 加字段/更新函数/投影附图",
+    "skills": []
+  },
+  {
+    "id": "4",
+    "status": "completed",
+    "content": "story-engine prompt 插图指令+剥离标签",
+    "skills": []
+  },
+  {
+    "id": "5",
+    "status": "completed",
+    "content": "story-app-base 插图卡片渲染+生图触发",
+    "skills": []
+  },
+  {
+    "id": "6",
+    "status": "completed",
+    "content": "story.css 卡片样式",
+    "skills": []
+  },
+  {
+    "id": "7",
+    "status": "completed",
+    "content": "build + dev 验证 + 推送",
+    "skills": []
+  }
+]
